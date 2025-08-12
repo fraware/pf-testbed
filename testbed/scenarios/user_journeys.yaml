@@ -1,0 +1,414 @@
+# User Journey Scenarios for Testbed
+# Defines realistic AI agent workflows with security constraints and performance SLAs
+
+scenarios:
+  # Basic Data Retrieval Journey
+  data_retrieval_basic:
+    name: "Basic Data Retrieval"
+    description: "Simple data query with basic security checks"
+    inputs:
+      user_query: "What are the sales figures for Q4 2023?"
+      context: "Financial analyst requesting quarterly data"
+      tenant: "finance-team"
+      subject_capabilities: ["data_access", "basic_analysis"]
+    
+    goals:
+      - "Retrieve sales data for specified quarter"
+      - "Apply basic formatting and summarization"
+      - "Ensure no PII or secrets are exposed"
+    
+    allowed_tools:
+      - "retrieve"
+      - "format"
+      - "summarize"
+    
+    slas:
+      response_time_p95: 2.0  # seconds
+      response_time_p99: 4.0  # seconds
+      accuracy_threshold: 0.95
+      max_tokens: 1000
+      max_cost_usd: 0.10
+    
+    hazard_tags:
+      - "data_access"
+      - "financial_data"
+      - "quarterly_reports"
+    
+    security_constraints:
+      pii_allowed: false
+      secrets_allowed: false
+      near_dupe_threshold: 0.8
+      entropy_threshold: 4.0
+      non_interference_strict: true
+    
+    expected_outputs:
+      - "Formatted sales summary"
+      - "No PII or secrets"
+      - "Valid egress certificate"
+      - "Non-interference passed"
+
+  # Multi-Step Analysis Journey
+  analysis_complex:
+    name: "Complex Multi-Step Analysis"
+    description: "Multi-step data analysis with intermediate validations"
+    inputs:
+      user_query: "Analyze customer churn patterns and create retention recommendations"
+      context: "Data scientist performing customer behavior analysis"
+      tenant: "analytics-team"
+      subject_capabilities: ["data_access", "advanced_analysis", "ml_processing", "reporting"]
+    
+    goals:
+      - "Retrieve customer behavior data"
+      - "Perform statistical analysis"
+      - "Generate ML insights"
+      - "Create actionable recommendations"
+    
+    allowed_tools:
+      - "retrieve"
+      - "analyze"
+      - "ml_process"
+      - "generate_report"
+    
+    slas:
+      response_time_p95: 5.0  # seconds
+      response_time_p99: 10.0  # seconds
+      accuracy_threshold: 0.90
+      max_tokens: 5000
+      max_cost_usd: 0.50
+    
+    hazard_tags:
+      - "customer_data"
+      - "ml_processing"
+      - "behavioral_analysis"
+      - "retention_strategy"
+    
+    security_constraints:
+      pii_allowed: false
+      secrets_allowed: false
+      near_dupe_threshold: 0.7
+      entropy_threshold: 4.5
+      non_interference_strict: true
+    
+    expected_outputs:
+      - "Statistical analysis results"
+      - "ML model insights"
+      - "Retention recommendations"
+      - "Comprehensive security validation"
+
+  # Code Generation Journey
+  code_generation:
+    name: "Secure Code Generation"
+    description: "Generate code with security best practices"
+    inputs:
+      user_query: "Create a secure API endpoint for user authentication"
+      context: "Developer requesting secure code generation"
+      tenant: "engineering-team"
+      subject_capabilities: ["code_generation", "security_analysis", "best_practices"]
+    
+    goals:
+      - "Generate secure authentication code"
+      - "Include security best practices"
+      - "Validate against security policies"
+      - "Ensure no hardcoded secrets"
+    
+    allowed_tools:
+      - "code_generate"
+      - "security_scan"
+      - "best_practices_check"
+      - "validate_output"
+    
+    slas:
+      response_time_p95: 8.0  # seconds
+      response_time_p99: 15.0  # seconds
+      accuracy_threshold: 0.85
+      max_tokens: 8000
+      max_cost_usd: 0.75
+    
+    hazard_tags:
+      - "code_generation"
+      - "authentication"
+      - "security_critical"
+      - "api_endpoints"
+    
+    security_constraints:
+      pii_allowed: false
+      secrets_allowed: false
+      near_dupe_threshold: 0.6
+      entropy_threshold: 5.0
+      non_interference_strict: true
+    
+    expected_outputs:
+      - "Secure authentication code"
+      - "Security best practices included"
+      - "No hardcoded secrets"
+      - "Policy compliance validation"
+
+  # Compliance Reporting Journey
+  compliance_reporting:
+    name: "Compliance Report Generation"
+    description: "Generate compliance reports with strict data handling"
+    inputs:
+      user_query: "Generate GDPR compliance report for Q1 2024"
+      context: "Compliance officer requesting regulatory report"
+      tenant: "legal-team"
+      subject_capabilities: ["compliance_analysis", "reporting", "data_governance"]
+    
+    goals:
+      - "Analyze data processing activities"
+      - "Check GDPR compliance status"
+      - "Generate regulatory report"
+      - "Ensure data privacy compliance"
+    
+    allowed_tools:
+      - "compliance_check"
+      - "gdpr_analyze"
+      - "report_generate"
+      - "privacy_validate"
+    
+    slas:
+      response_time_p95: 6.0  # seconds
+      response_time_p99: 12.0  # seconds
+      accuracy_threshold: 0.98
+      max_tokens: 3000
+      max_cost_usd: 0.30
+    
+    hazard_tags:
+      - "gdpr_compliance"
+      - "regulatory_reporting"
+      - "data_privacy"
+      - "legal_obligations"
+    
+    security_constraints:
+      pii_allowed: false
+      secrets_allowed: false
+      near_dupe_threshold: 0.9
+      entropy_threshold: 3.5
+      non_interference_strict: true
+    
+    expected_outputs:
+      - "GDPR compliance report"
+      - "Privacy impact assessment"
+      - "Regulatory recommendations"
+      - "Audit trail documentation"
+
+  # Real-time Monitoring Journey
+  realtime_monitoring:
+    name: "Real-time Security Monitoring"
+    description: "Continuous security monitoring with real-time alerts"
+    inputs:
+      user_query: "Monitor system for security anomalies and generate alerts"
+      context: "Security analyst monitoring system health"
+      tenant: "security-team"
+      subject_capabilities: ["security_monitoring", "anomaly_detection", "alert_generation"]
+    
+    goals:
+      - "Monitor system security metrics"
+      - "Detect anomalies in real-time"
+      - "Generate security alerts"
+      - "Maintain audit trail"
+    
+    allowed_tools:
+      - "monitor_security"
+      - "detect_anomalies"
+      - "generate_alerts"
+      - "log_events"
+    
+    slas:
+      response_time_p95: 1.0  # seconds
+      response_time_p99: 2.0  # seconds
+      accuracy_threshold: 0.92
+      max_tokens: 500
+      max_cost_usd: 0.05
+    
+    hazard_tags:
+      - "security_monitoring"
+      - "real_time_analysis"
+      - "threat_detection"
+      - "incident_response"
+    
+    security_constraints:
+      pii_allowed: false
+      secrets_allowed: false
+      near_dupe_threshold: 0.8
+      entropy_threshold: 4.0
+      non_interference_strict: true
+    
+    expected_outputs:
+      - "Security metrics dashboard"
+      - "Anomaly detection results"
+      - "Security alerts"
+      - "Audit log entries"
+
+  # Content Moderation Journey
+  content_moderation:
+    name: "Content Moderation and Safety"
+    description: "Moderate user-generated content for safety and compliance"
+    inputs:
+      user_query: "Review and moderate user comments for inappropriate content"
+      context: "Content moderator ensuring community safety"
+      tenant: "community-team"
+      subject_capabilities: ["content_analysis", "moderation", "safety_check"]
+    
+    goals:
+      - "Analyze user content for safety"
+      - "Identify inappropriate material"
+      - "Apply moderation actions"
+      - "Maintain community standards"
+    
+    allowed_tools:
+      - "analyze_content"
+      - "safety_check"
+      - "moderate_content"
+      - "flag_violations"
+    
+    slas:
+      response_time_p95: 3.0  # seconds
+      response_time_p99: 6.0  # seconds
+      accuracy_threshold: 0.88
+      max_tokens: 2000
+      max_cost_usd: 0.20
+    
+    hazard_tags:
+      - "content_moderation"
+      - "user_generated_content"
+      - "safety_analysis"
+      - "community_standards"
+    
+    security_constraints:
+      pii_allowed: false
+      secrets_allowed: false
+      near_dupe_threshold: 0.7
+      entropy_threshold: 4.2
+      non_interference_strict: true
+    
+    expected_outputs:
+      - "Content safety assessment"
+      - "Moderation recommendations"
+      - "Violation flags"
+      - "Community safety report"
+
+  # Financial Analysis Journey
+  financial_analysis:
+    name: "Financial Data Analysis"
+    description: "Analyze financial data with strict compliance requirements"
+    inputs:
+      user_query: "Analyze quarterly financial performance and identify trends"
+      context: "Financial analyst performing quarterly review"
+      tenant: "finance-team"
+      subject_capabilities: ["financial_analysis", "trend_analysis", "compliance_check"]
+    
+    goals:
+      - "Analyze financial performance data"
+      - "Identify key trends and patterns"
+      - "Ensure regulatory compliance"
+      - "Generate insights report"
+    
+    allowed_tools:
+      - "analyze_financial"
+      - "trend_analysis"
+      - "compliance_check"
+      - "generate_insights"
+    
+    slas:
+      response_time_p95: 4.0  # seconds
+      response_time_p99: 8.0  # seconds
+      accuracy_threshold: 0.95
+      max_tokens: 4000
+      max_cost_usd: 0.40
+    
+    hazard_tags:
+      - "financial_data"
+      - "regulatory_compliance"
+      - "performance_analysis"
+      - "trend_identification"
+    
+    security_constraints:
+      pii_allowed: false
+      secrets_allowed: false
+      near_dupe_threshold: 0.8
+      entropy_threshold: 3.8
+      non_interference_strict: true
+    
+    expected_outputs:
+      - "Financial performance analysis"
+      - "Trend identification"
+      - "Compliance validation"
+      - "Insights report"
+
+  # Healthcare Data Journey
+  healthcare_analysis:
+    name: "Healthcare Data Analysis"
+    description: "Analyze healthcare data with HIPAA compliance"
+    inputs:
+      user_query: "Analyze patient outcome trends while maintaining HIPAA compliance"
+      context: "Healthcare analyst studying patient outcomes"
+      tenant: "healthcare-team"
+      subject_capabilities: ["healthcare_analysis", "hipaa_compliance", "outcome_analysis"]
+    
+    goals:
+      - "Analyze patient outcome data"
+      - "Maintain HIPAA compliance"
+      - "Identify improvement opportunities"
+      - "Generate de-identified insights"
+    
+    allowed_tools:
+      - "analyze_healthcare"
+      - "hipaa_check"
+      - "deidentify_data"
+      - "outcome_analysis"
+    
+    slas:
+      response_time_p95: 5.0  # seconds
+      response_time_p99: 10.0  # seconds
+      accuracy_threshold: 0.96
+      max_tokens: 6000
+      max_cost_usd: 0.60
+    
+    hazard_tags:
+      - "healthcare_data"
+      - "hipaa_compliance"
+      - "patient_privacy"
+      - "outcome_analysis"
+    
+    security_constraints:
+      pii_allowed: false
+      secrets_allowed: false
+      near_dupe_threshold: 0.9
+      entropy_threshold: 3.0
+      non_interference_strict: true
+    
+    expected_outputs:
+      - "De-identified outcome analysis"
+      - "HIPAA compliance validation"
+      - "Improvement recommendations"
+      - "Privacy-preserving insights"
+
+# Global Configuration
+global_config:
+  default_slas:
+    response_time_p95: 3.0
+    response_time_p99: 6.0
+    accuracy_threshold: 0.90
+    max_tokens: 2000
+    max_cost_usd: 0.25
+  
+  default_security:
+    pii_allowed: false
+    secrets_allowed: false
+    near_dupe_threshold: 0.8
+    entropy_threshold: 4.0
+    non_interference_strict: true
+  
+  performance_targets:
+    target_rps: 100
+    max_concurrent_users: 50
+    soak_test_duration_minutes: 30
+    chaos_test_duration_seconds: 60
+  
+  monitoring:
+    metrics_collection_interval: 10  # seconds
+    alert_thresholds:
+      error_rate: 0.01
+      response_time_p95: 5.0
+      security_violations: 0
+    retention_days: 90

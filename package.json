@@ -1,0 +1,107 @@
+{
+  "name": "pf-testbed",
+  "version": "1.0.0",
+  "description": "Provability Fabric Testbed - A comprehensive testbed for validating and demonstrating Provability Fabric's capabilities",
+  "main": "testbed/runtime/gateway/src/index.ts",
+  "scripts": {
+    "dev": "concurrently \"npm run start:gateway\" \"npm run start:ingress\" \"npm run start:ledger\"",
+    "dev:watch": "nodemon --watch testbed/runtime/gateway/src --exec \"npm run start:gateway\"",
+    "start": "npm run start:gateway",
+    "start:gateway": "ts-node testbed/runtime/gateway/src/index.ts",
+    "start:ingress": "ts-node testbed/ingress/selfserve/index.ts",
+    "start:ledger": "ts-node testbed/runtime/ledger/src/index.ts",
+    "build": "tsc --project testbed/runtime/gateway/tsconfig.json && tsc --project testbed/ingress/selfserve/tsconfig.json && tsc --project testbed/runtime/ledger/tsconfig.json",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:e2e": "cypress run",
+    "test:observability": "jest --testPathPattern=observability",
+    "test:safety-case": "jest --testPathPattern=safety_case",
+    "test:selfserve": "jest --testPathPattern=selfserve",
+    "test:reporter": "pytest testbed/tools/reporter/",
+    "lint": "eslint testbed/runtime/gateway/src testbed/ingress/selfserve testbed/runtime/ledger/src --ext .ts",
+    "lint:fix": "eslint testbed/runtime/gateway/src testbed/ingress/selfserve testbed/runtime/ledger/src --ext .ts --fix",
+    "format": "prettier --write \"testbed/**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"testbed/**/*.{ts,js,json,md}\"",
+    "setup:hooks": "husky install",
+    "clean": "rm -rf dist build node_modules/.cache",
+    "docker:build": "docker build -t pf-testbed-gateway testbed/runtime/gateway && docker build -t pf-testbed-ingress testbed/ingress/selfserve && docker build -t pf-testbed-ledger testbed/runtime/ledger",
+    "docker:run": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "report:generate": "python testbed/tools/reporter/generate_testbed_report.py --config testbed/tools/reporter/config.yaml --output ./reports --format both --time-range 24",
+    "report:validate": "python testbed/tools/reporter/validate_report.py --report-dir ./reports"
+  },
+  "keywords": [
+    "provability-fabric",
+    "testbed",
+    "observability",
+    "safety-case",
+    "agent-integration",
+    "reporting",
+    "proof-verification",
+    "lean-theorems",
+    "grafana",
+    "prometheus"
+  ],
+  "author": "Provability Fabric Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/pf-testbed.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/pf-testbed/issues"
+  },
+  "homepage": "https://github.com/your-org/pf-testbed#readme",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "zod": "^3.22.4",
+    "prom-client": "^15.1.0",
+    "ws": "^8.14.2",
+    "uuid": "^9.0.1",
+    "archiver": "^6.0.1",
+    "compression": "^1.7.4",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/ws": "^8.5.10",
+    "@types/uuid": "^9.0.7",
+    "@types/archiver": "^6.0.2",
+    "@types/compression": "^1.7.5",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.0",
+    "ts-node": "^10.9.1",
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.8",
+    "ts-jest": "^29.1.1",
+    "cypress": "^13.6.0",
+    "concurrently": "^8.2.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}

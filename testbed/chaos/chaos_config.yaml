@@ -1,0 +1,136 @@
+name: "Resilience Chaos Test"
+description: "Comprehensive chaos testing with k6 load and SLO monitoring"
+duration_minutes: 15
+
+load_profile: "ramp"
+
+k6_config:
+  target_url: "http://localhost:8080"
+  target_rps: 100
+  p95_threshold: 500
+  error_threshold: 0.01
+  vus: 50
+
+faults:
+  - name: "cpu_hog_light"
+    type: "cpu_hog"
+    severity: "low"
+    duration_seconds: 60
+    probability: 0.3
+    parameters:
+      cpu_percent: 30
+    slo_impact:
+      - "response_time_p95"
+      - "throughput"
+
+  - name: "cpu_hog_heavy"
+    type: "cpu_hog"
+    severity: "high"
+    duration_seconds: 120
+    probability: 0.1
+    parameters:
+      cpu_percent: 80
+    slo_impact:
+      - "response_time_p95"
+      - "error_rate"
+      - "throughput"
+
+  - name: "network_loss_light"
+    type: "network_loss"
+    severity: "medium"
+    duration_seconds: 90
+    probability: 0.2
+    parameters:
+      loss_percent: 10
+    slo_impact:
+      - "response_time_p95"
+      - "error_rate"
+
+  - name: "network_loss_heavy"
+    type: "network_loss"
+    severity: "critical"
+    duration_seconds: 60
+    probability: 0.05
+    parameters:
+      loss_percent: 50
+    slo_impact:
+      - "response_time_p95"
+      - "error_rate"
+      - "throughput"
+
+  - name: "memory_leak_moderate"
+    type: "memory_leak"
+    severity: "medium"
+    duration_seconds: 180
+    probability: 0.15
+    parameters:
+      memory_mb: 100
+    slo_impact:
+      - "response_time_p95"
+      - "throughput"
+
+  - name: "disk_io_spike"
+    type: "disk_io"
+    severity: "low"
+    duration_seconds: 45
+    probability: 0.25
+    parameters:
+      io_mb: 50
+    slo_impact:
+      - "response_time_p95"
+
+slo_gates:
+  - name: "response_time_p95"
+    metric: "response_time_p95"
+    threshold: 500.0
+    operator: "<"
+    window_seconds: 60
+    severity: "critical"
+    backpressure_trigger: true
+
+  - name: "error_rate"
+    metric: "error_rate"
+    threshold: 0.01
+    operator: "<"
+    window_seconds: 60
+    severity: "critical"
+    backpressure_trigger: true
+
+  - name: "throughput_min"
+    metric: "throughput"
+    threshold: 50.0
+    operator: ">"
+    window_seconds: 120
+    severity: "warning"
+    backpressure_trigger: false
+
+  - name: "availability"
+    metric: "availability"
+    threshold: 0.99
+    operator: ">"
+    window_seconds: 300
+    severity: "critical"
+    backpressure_trigger: true
+
+backpressure_config:
+  activation_threshold: 2  # Number of critical SLO violations before activation
+  stabilization_window: 60  # Seconds to wait before deactivating
+  load_reduction_factor: 0.5  # Reduce load by this factor when active
+  fault_injection_pause: true  # Pause fault injection during backpressure
+  graceful_degradation: true  # Enable graceful degradation of non-critical features
+
+monitoring:
+  metrics_collection_interval: 10  # seconds
+  alert_thresholds:
+    health_score_critical: 30
+    health_score_warning: 70
+  retention:
+    metrics_days: 7
+    logs_days: 30
+    results_days: 90
+
+recovery:
+  automatic_cleanup: true
+  health_check_interval: 30  # seconds
+  max_recovery_attempts: 3
+  recovery_timeout: 300  # seconds

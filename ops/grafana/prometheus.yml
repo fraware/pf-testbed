@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Testbed Gateway
+  - job_name: 'pf-testbed-gateway'
+    static_configs:
+      - targets: ['gateway:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Testbed Ingress
+  - job_name: 'pf-testbed-ingress'
+    static_configs:
+      - targets: ['ingress:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Testbed Ledger
+  - job_name: 'pf-testbed-ledger'
+    static_configs:
+      - targets: ['ledger:3002']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Node.js applications (if using prom-client)
+  - job_name: 'nodejs'
+    static_configs:
+      - targets: ['gateway:3000', 'ingress:3001', 'ledger:3002']
+    metrics_path: '/metrics'
+    scrape_interval: 10s

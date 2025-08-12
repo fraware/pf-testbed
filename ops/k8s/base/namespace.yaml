@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pf-system
+  labels:
+    name: pf-system
+    purpose: testbed
+    environment: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agents
+  labels:
+    name: agents
+    purpose: testbed
+    environment: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: acme
+  labels:
+    name: acme
+    purpose: testbed
+    tenant: acme
+    environment: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: globex
+  labels:
+    name: globex
+    purpose: testbed
+    tenant: globex
+    environment: dev

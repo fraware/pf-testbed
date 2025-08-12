@@ -1,0 +1,163 @@
+{
+  "name": "pf-testbed-tools",
+  "version": "1.0.0",
+  "description": "Provability Fabric Testbed Tools - Comprehensive observability, safety case management, self-serve capabilities, and automated reporting",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts,.js --fix",
+    "build": "tsc",
+    "start:observability": "ts-node runtime/gateway/src/observability.ts",
+    "start:selfserve": "ts-node ingress/selfserve/index.ts",
+    "start:reporter": "python tools/reporter/generate_testbed_report.py --help",
+    "dev": "concurrently \"npm run start:observability\" \"npm run start:selfserve\"",
+    "validate": "npm run lint && npm run test",
+    "setup": "npm install && pip install -r requirements.txt",
+    "clean": "rm -rf node_modules dist coverage",
+    "docs": "typedoc --out docs src/",
+    "security:audit": "npm audit && npm audit fix",
+    "performance:test": "k6 run tests/performance/load-test.js",
+    "e2e:test": "cypress run",
+    "e2e:open": "cypress open"
+  },
+  "keywords": [
+    "provability-fabric",
+    "testbed",
+    "observability",
+    "safety-case",
+    "self-serve",
+    "reporting",
+    "ai-safety",
+    "compliance",
+    "audit",
+    "metrics"
+  ],
+  "author": "Provability Fabric Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/org/pf-testbed.git"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.1.5",
+    "prom-client": "^15.1.0",
+    "zod": "^3.22.4",
+    "aiohttp": "^3.9.1",
+    "jinja2": "^3.1.2",
+    "pyyaml": "^6.0.1",
+    "pandas": "^2.1.4",
+    "matplotlib": "^3.8.2",
+    "seaborn": "^0.13.0",
+    "weasyprint": "^60.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "concurrently": "^8.2.2",
+    "cypress": "^13.6.1",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "k6": "^0.47.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "typedoc": "^0.25.7"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run lint && npm run test",
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "commitlint": {
+    "extends": ["@commitlint/config-conventional"]
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.{ts,js}",
+      "!src/**/*.d.ts",
+      "!src/**/*.test.{ts,js}",
+      "!src/**/*.spec.{ts,js}"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    },
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.ts"]
+  },
+  "eslintConfig": {
+    "extends": [
+      "@typescript-eslint/recommended",
+      "eslint:recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "plugins": ["@typescript-eslint"],
+    "rules": {
+      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/explicit-function-return-type": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "prefer-const": "error",
+      "no-var": "error"
+    }
+  },
+  "tsconfig": {
+    "compilerOptions": {
+      "target": "ES2020",
+      "module": "commonjs",
+      "lib": ["ES2020"],
+      "outDir": "./dist",
+      "rootDir": "./src",
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true,
+      "declaration": true,
+      "declarationMap": true,
+      "sourceMap": true,
+      "resolveJsonModule": true,
+      "allowSyntheticDefaultImports": true,
+      "experimentalDecorators": true,
+      "emitDecoratorMetadata": true
+    },
+    "include": [
+      "src/**/*",
+      "tests/**/*"
+    ],
+    "exclude": [
+      "node_modules",
+      "dist",
+      "coverage"
+    ]
+  },
+  "workspaces": [
+    "runtime/gateway",
+    "ingress/selfserve",
+    "tools/reporter"
+  ]
+}

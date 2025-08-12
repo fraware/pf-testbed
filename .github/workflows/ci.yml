@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Show pinned commit
+        run: |
+          git -C external/provability-fabric rev-parse --short HEAD
+
+      - name: Run PF tests from submodule
+        working-directory: external/provability-fabric
+        run: |
+          make test   # or: lake build / python tests/trust_fire_orchestrator.py

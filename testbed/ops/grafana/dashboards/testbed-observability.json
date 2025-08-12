@@ -1,0 +1,167 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Testbed Observability Dashboard",
+    "tags": ["testbed", "observability", "pf"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "SLO Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "testbed_slo_violations_total",
+            "legendFormat": "SLO Violations"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Latency P95/P99",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(testbed_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 Latency"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(testbed_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99 Latency"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 2},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Theorem Verification Rate",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "testbed_theorem_verification_rate",
+            "legendFormat": "Verification Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 0.8},
+                {"color": "green", "value": 0.95}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Active Traces by Tenant",
+        "type": "barchart",
+        "targets": [
+          {
+            "expr": "testbed_active_traces_total",
+            "legendFormat": "{{tenant}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Honeytoken Alerts",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "testbed_honeytoken_alerts_total",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Access Receipts",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(testbed_access_receipts_total[5m])",
+            "legendFormat": "Receipts/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Certificate Status",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "testbed_certificate_status_total",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Trace Chain: Trace → Plan → Theorem → Cert",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "testbed_trace_chain_logs",
+            "legendFormat": "{{trace_id}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s",
+    "schemaVersion": 30,
+    "version": 1
+  }
+}

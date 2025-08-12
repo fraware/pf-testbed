@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pf-testbed-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./ops/grafana/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - pf-testbed
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pf-testbed-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./ops/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./ops/grafana/datasources:/etc/grafana/provisioning/datasources
+    restart: unless-stopped
+    networks:
+      - pf-testbed
+    depends_on:
+      - prometheus
+
+  ledger:
+    image: node:18-alpine
+    container_name: pf-testbed-ledger
+    working_dir: /app
+    volumes:
+      - ./testbed/runtime/ledger:/app
+    ports:
+      - "3002:3002"
+    command: >
+      sh -c "npm install && npm start"
+    environment:
+      - NODE_ENV=development
+      - LEDGER_PORT=3002
+    restart: unless-stopped
+    networks:
+      - pf-testbed
+
+  gateway:
+    image: node:18-alpine
+    container_name: pf-testbed-gateway
+    working_dir: /app
+    volumes:
+      - ./testbed/runtime/gateway:/app
+    ports:
+      - "3003:3000"
+    command: >
+      sh -c "npm install && npm start"
+    environment:
+      - NODE_ENV=development
+      - GATEWAY_PORT=3000
+      - PROMETHEUS_URL=http://prometheus:9090
+    restart: unless-stopped
+    networks:
+      - pf-testbed
+    depends_on:
+      - prometheus
+
+  ingress:
+    image: node:18-alpine
+    container_name: pf-testbed-ingress
+    working_dir: /app
+    volumes:
+      - ./testbed/ingress/selfserve:/app
+    ports:
+      - "3001:3001"
+    command: >
+      sh -c "npm install && npm start"
+    environment:
+      - NODE_ENV=development
+      - INGRESS_PORT=3001
+    restart: unless-stopped
+    networks:
+      - pf-testbed
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  pf-testbed:
+    driver: bridge

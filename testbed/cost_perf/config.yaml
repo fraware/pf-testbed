@@ -1,0 +1,228 @@
+# Cost & Performance Accounting Configuration
+
+component_rates:
+  # Cost per second for each component type (USD)
+  llm_inference: 0.001
+  data_retrieval: 0.0001
+  computation: 0.0005
+  storage: 0.00001
+  network: 0.00005
+  database: 0.0002
+  cache: 0.00002
+  api_gateway: 0.0001
+  load_balancer: 0.00005
+  monitoring: 0.00001
+
+performance_metrics:
+  response_time:
+    unit: "seconds"
+    target: 1.0
+    critical: 5.0
+  
+  throughput:
+    unit: "requests_per_second"
+    target: 100.0
+    critical: 10.0
+  
+  accuracy:
+    unit: "percentage"
+    target: 95.0
+    critical: 80.0
+  
+  availability:
+    unit: "percentage"
+    target: 99.9
+    critical: 95.0
+  
+  latency:
+    unit: "milliseconds"
+    target: 100.0
+    critical: 500.0
+
+cost_thresholds:
+  # Cost thresholds for alerts (USD per operation)
+  low: 0.001
+  medium: 0.01
+  high: 0.10
+  critical: 1.00
+  
+  # Daily cost limits per tenant
+  daily_limits:
+    default: 10.00
+    premium: 100.00
+    enterprise: 1000.00
+
+reporting:
+  dashboard_update_interval: 60  # seconds
+  weekly_delta_calculation: true
+  monthly_trend_analysis: true
+  cost_alert_thresholds:
+    high: 0.10
+    critical: 1.00
+  
+  export_formats:
+    - "json"
+    - "csv"
+    - "pdf"
+    - "html"
+  
+  retention:
+    raw_data_days: 90
+    aggregated_data_days: 365
+    cost_history_days: 730
+
+monitoring:
+  metrics_collection_interval: 10  # seconds
+  cost_tracking_enabled: true
+  performance_tracking_enabled: true
+  alert_channels:
+    - type: "email"
+      recipients: ["ops@company.com", "finance@company.com"]
+      frequency: "immediate"
+    
+    - type: "slack"
+      channel: "#cost-monitoring"
+      frequency: "immediate"
+    
+    - type: "pagerduty"
+      service: "cost-alerts"
+      urgency: "high"
+
+component_mapping:
+  # Map component names to cost categories
+  llm_models:
+    gpt-4: "llm_inference"
+    gpt-3.5-turbo: "llm_inference"
+    claude-3: "llm_inference"
+    llama-2: "llm_inference"
+  
+  data_operations:
+    vector_search: "data_retrieval"
+    document_ingestion: "storage"
+    index_building: "computation"
+    data_export: "network"
+  
+  infrastructure:
+    kubernetes_pod: "computation"
+    database_connection: "database"
+    redis_cache: "cache"
+    load_balancer: "load_balancer"
+
+cost_optimization:
+  # Strategies for cost optimization
+  strategies:
+    - name: "auto_scaling"
+      description: "Automatically scale resources based on demand"
+      enabled: true
+      min_instances: 1
+      max_instances: 10
+    
+    - name: "resource_pooling"
+      description: "Share resources across tenants when possible"
+      enabled: true
+      max_tenants_per_pool: 5
+    
+    - name: "caching"
+      description: "Cache frequently accessed data to reduce computation"
+      enabled: true
+      cache_ttl_hours: 24
+    
+    - name: "batch_processing"
+      description: "Process requests in batches to reduce overhead"
+      enabled: true
+      batch_size: 100
+      batch_timeout_seconds: 30
+
+billing:
+  # Billing configuration
+  billing_cycle: "monthly"
+  currency: "USD"
+  tax_rate: 0.08  # 8%
+  
+  # Pricing tiers
+  tiers:
+    free:
+      monthly_limit: 1.00
+      features: ["basic_monitoring", "csv_exports"]
+    
+    starter:
+      monthly_limit: 10.00
+      features: ["advanced_monitoring", "json_exports", "weekly_reports"]
+    
+    professional:
+      monthly_limit: 100.00
+      features: ["real_time_monitoring", "all_exports", "daily_reports", "cost_optimization"]
+    
+    enterprise:
+      monthly_limit: 1000.00
+      features: ["custom_monitoring", "api_access", "dedicated_support", "custom_optimization"]
+
+alerts:
+  # Alert conditions for cost and performance
+  conditions:
+    - name: "cost_spike"
+      metric: "cost_per_minute"
+      operator: ">"
+      threshold: 0.10
+      duration_minutes: 5
+      severity: "high"
+    
+    - name: "performance_degradation"
+      metric: "response_time_p95"
+      operator: ">"
+      threshold: 2.0
+      duration_minutes: 10
+      severity: "critical"
+    
+    - name: "cost_efficiency_drop"
+      metric: "performance_cost_ratio"
+      operator: "<"
+      threshold: 100.0
+      duration_minutes: 15
+      severity: "medium"
+    
+    - name: "daily_limit_approaching"
+      metric: "daily_cost"
+      operator: ">"
+      threshold: 0.8  # 80% of daily limit
+      duration_minutes: 60
+      severity: "warning"
+
+notifications:
+  # Notification preferences
+  channels:
+    - type: "email"
+      enabled: true
+      frequency: "immediate"
+      recipients: ["ops@company.com"]
+    
+    - type: "slack"
+      enabled: true
+      frequency: "immediate"
+      channels: ["#cost-alerts", "#performance-alerts"]
+    
+    - type: "webhook"
+      enabled: false
+      url: "https://api.company.com/webhooks/cost-alerts"
+      frequency: "immediate"
+  
+  schedules:
+    - name: "daily_summary"
+      time: "09:00"
+      timezone: "UTC"
+      channels: ["email", "slack"]
+      include: ["cost_summary", "performance_summary", "alerts"]
+    
+    - name: "weekly_report"
+      day: "monday"
+      time: "10:00"
+      timezone: "UTC"
+      channels: ["email"]
+      include: ["cost_analysis", "trends", "optimization_suggestions"]
+    
+    - name: "monthly_billing"
+      day: "1"
+      time: "08:00"
+      timezone: "UTC"
+      channels: ["email"]
+      include: ["billing_summary", "cost_breakdown", "projections"]
