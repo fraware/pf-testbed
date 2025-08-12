@@ -1,0 +1,4 @@
+[submodule "external/provability-fabric"]
+	path = external/provability-fabric
+	url = https://github.com/fraware/provability-fabric.git
+	branch = main
