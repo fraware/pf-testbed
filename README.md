@@ -1,8 +1,8 @@
 # Provability Fabric Testbed
 
-A testbed for validating and demonstrating Provability Fabric's capabilities with observability, safety case management, external agent integration, and automated reporting.
+A comprehensive testbed for validating and demonstrating Provability Fabric's capabilities with observability, safety case management, external agent integration, and automated reporting.
 
-## Installation
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+ and npm
@@ -10,7 +10,7 @@ A testbed for validating and demonstrating Provability Fabric's capabilities wit
 - Docker and Docker Compose
 - Kubernetes cluster (for production deployment)
 
-### Quick Start
+### Installation
 
 1. **Clone the repository**
    ```bash
@@ -27,97 +27,141 @@ A testbed for validating and demonstrating Provability Fabric's capabilities wit
    pip install -r testbed/tools/requirements.txt
    ```
 
-3. **Start services**
+3. **Configure environment**
    ```bash
-   # Start Prometheus and Ledger services
-   docker-compose up -d
+   # Copy the example environment file
+   cp env.example .env
    
-   # Start the testbed gateway
-   npm run start:gateway
-   
-   # Start self-serve ingress
-   npm run start:ingress
+   # Edit .env with your configuration values
+   # Required: Database credentials, API keys, secrets
    ```
 
-4. **Access the system**
-   - **Testbed Gateway**: http://localhost:3000
+4. **Start services**
+   ```bash
+   # Start all services (Docker Compose)
+   run.bat up
+   
+   # Or use individual commands
+   run.bat start:gateway
+   run.bat start:ingress
+   run.bat start:ledger
+   ```
+
+5. **Access the system**
+   - **Testbed Gateway**: http://localhost:3003
    - **Self-Serve Ingress**: http://localhost:3001
-   - **Grafana Dashboard**: http://localhost:3000/grafana
+   - **Grafana Dashboard**: http://localhost:3100
    - **Prometheus Metrics**: http://localhost:9090
+   - **Ledger Service**: http://localhost:3002
 
-## Usage Examples
+## Management Commands
 
-### Observability Dashboard
-```typescript
-import { observabilityService } from './testbed/runtime/gateway/src/observability';
+### Windows (run.bat)
+```cmd
+# Quick start (starts all services)
+run.bat up
 
-// Create a trace context
-const traceContext = observabilityService.createTraceContext({
-  plan_id: 'plan-123',
-  tenant: 'acme-corp',
-  journey: 'user-onboarding',
-  user_id: 'user-456'
-});
+# Stop all services
+run.bat down
 
-// Link to Lean theorem
-observabilityService.linkLeanTheorem(traceContext.trace_id, {
-  theorem_id: 'thm-789',
-  theorem_name: 'UserAccessControl',
-  spec_file: 'access_control.lean',
-  spec_line: 42,
-  confidence: 0.95
-});
+# View logs
+run.bat logs
+
+# Show service status
+run.bat status
+
+# Run tests
+run.bat test
+
+# Generate reports
+run.bat report
+
+# Show help
+run.bat
 ```
 
-### Safety Case Management
-```typescript
-import { safetyCaseManager } from './testbed/runtime/ledger/safety_case';
-
-// Create safety case bundle
-const bundle = safetyCaseManager.createBundle({
-  session_id: 'session-123',
-  tenant: 'acme-corp',
-  plan: planData,
-  receipts: [receipt1, receipt2],
-  traces: [trace1, trace2]
-});
-
-// Export bundle for auditors
-const zipBuffer = await safetyCaseManager.exportBundle('session-123');
-```
-
-### Self-Serve Agent Integration
-```typescript
-import { selfServeIngress } from './testbed/ingress/selfserve';
-
-// Start the self-serve service
-selfServeIngress.start(3001);
-
-// The service automatically handles:
-// - Partner signup and tenant provisioning
-// - API key generation and management
-// - Rate limiting and tenant isolation
-// - PF-Sig and receipt validation
-```
-
-### Report Generation
+### Linux/Mac (Makefile)
 ```bash
-# Generate comprehensive testbed report
-python testbed/tools/reporter/generate_testbed_report.py \
-  --config testbed/tools/reporter/config.yaml \
-  --output ./reports \
-  --format both \
-  --time-range 24
+# Quick start (starts all services)
+make up
 
-# The report includes:
-# - Performance metrics (latency, throughput, error rates)
-# - Security metrics (SLO violations, honeytoken alerts)
-# - Compliance metrics (access receipts, certificates)
-# - ART harness comparison
-# - Red-team regression analysis
+# Stop all services
+make down
+
+# View logs
+make logs
+
+# Seed data and populate indices
+make seed
+
+# Generate testbed report
+make report
+
+# Full testbed deployment (Kubernetes)
+make testbed-up
+
+# Show help
+make help
 ```
 
-## Testing
+## Architecture Overview
+
+The testbed implements a complete end-to-end decision path with provable security guarantees:
+
+```
+┌─────────────┐      ┌──────────────┐     ┌─────────────┐     ┌─────────────┐
+│ Observation │───▶  │   Retrieve   │───▶│    Plan     │───▶│   Kernel    │
+│             │      │  (Receipt)   │     │   (DSL)     │     │             │
+└─────────────┘      └──────────────┘     └─────────────┘     └─────────────┘
+                                                              │
+                                                              ▼
+┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌─────────────┐
+│ Safety Case │◀───│    Egress    │◀───│ Tool Broker │◀───│  Decision  │
+│             │    │   (Cert)     │    │             │    │             │
+└─────────────┘    └──────────────┘    └─────────────┘    └─────────────┘
+```
+
+## Service Level Objectives (SLOs)
+
+### Performance SLOs
+| Metric | Threshold | Measurement Method | k6 Job Configuration |
+|--------|-----------|-------------------|---------------------|
+| P95 Latency | ≤ 2 seconds | Load testing with k6 | `testbed/tests/performance/slo-load-test.js` |
+| P99 Latency | ≤ 5 seconds | Load testing with k6 | `testbed/tests/performance/slo-load-test.js` |
+| Error Rate | ≤ 2% | Load testing with k6 | `testbed/tests/performance/slo-load-test.js` |
+| Throughput | ≥ 100 req/s | Load testing with k6 | `testbed/tests/performance/slo-load-test.js` |
+
+### Security SLOs
+| Metric | Threshold | Measurement Method | Validation |
+|--------|-----------|-------------------|------------|
+| Cross-tenant reads | 0 | Fuzzing tests | 100k queries, 0 violations |
+| PII/Secret leaks | 0 | Red-team corpus | 50k adversarial turns |
+| Injection blocking | ≥95% | Injection corpus | SQL, XSS, command injection |
+| Honeytoken trips | 0 | Production monitoring | Real-time alerting |
+
+### Cost SLOs
+| Metric | Threshold | Measurement Method | Optimization |
+|--------|-----------|-------------------|-------------|
+| CPU/1k calls | ↓ 20-35% | Performance profiling | gRPC, caching, WASM pools |
+| Egress latency | p95 < 400ms | Load testing | Streaming detectors, early exit |
+
+## Security Features
+
+### Non-Interference Guarantee
+The Provability Fabric Testbed implements strict isolation mechanisms that guarantee non-interference between different tenants and security domains:
+
+- **Tenant Isolation**: Complete sandboxing between partners with physical data partitioning
+- **Capability Enforcement**: All tool calls require matching capabilities with cryptographic verification
+- **Information Flow Control**: Mathematical guarantees that high-security inputs cannot influence low-security outputs
+- **Audit Trails**: Complete session documentation with cryptographic proofs
+
+### Cryptographic Foundation
+- **Ed25519**: Digital signatures for authentication and non-repudiation
+- **BLAKE3**: Fast cryptographic hashing for integrity verification
+- **AES-256-GCM**: Symmetric encryption for data at rest and in transit
+- **ChaCha20-Poly1305**: High-performance authenticated encryption
+
+## Testing & Validation
 
 ### Run All Tests
 ```bash
@@ -130,7 +174,7 @@ pytest testbed/tools/reporter/
 # Run Cypress E2E tests
 npm run test:e2e
 
-# Run specific testbed tests
+# Run specific test suites
 npm run test:observability
 npm run test:safety-case
 npm run test:selfserve
@@ -141,10 +185,11 @@ npm run test:reporter
 - **Unit Tests**: Jest for TypeScript, pytest for Python
 - **Integration Tests**: API endpoints and service interactions
 - **E2E Tests**: Cypress for UI workflows and user journeys
-- **Performance Tests**: Latency and throughput validation
+- **Performance Tests**: k6 load testing with SLO validation
 - **Security Tests**: Red-team scenarios and vulnerability assessment
+- **Fuzzing Tests**: 100k+ queries for cross-tenant isolation validation
 
-## Monitoring & Metrics
+## Monitoring & Observability
 
 ### Key Performance Indicators
 - **Latency to Insight**: < 5 seconds
@@ -166,27 +211,6 @@ npm run test:reporter
 - `testbed_theorem_verification_rate`: Theorem verification gauge
 - `testbed_active_traces`: Active trace count
 - `testbed_honeytoken_alerts`: Security alert counter
-
-## Security & Compliance
-
-### Security Features
-- **Tenant Isolation**: Complete sandboxing between partners
-- **API Key Management**: Secure key generation and rotation
-- **Rate Limiting**: Per-tenant request throttling
-- **Edge Validation**: PF-Sig and receipt schema verification
-- **Honeytokens**: Deception-based security monitoring
-
-### Compliance Frameworks
-- **SOC2**: Security controls and monitoring
-- **ISO27001**: Information security management
-- **GDPR**: Data protection and privacy
-- **Audit Trails**: Complete session documentation
-
-### Data Retention
-- **Safety Case Bundles**: 90-day retention policy
-- **Access Receipts**: Immutable audit logs
-- **Kernel Decisions**: Complete decision trail
-- **Export Capability**: ZIP format for external review
 
 ## Deployment
 

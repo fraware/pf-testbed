@@ -1,0 +1,144 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: "testbed"
+    region: "us-west-2"
+
+# Enable exemplars for detailed insights
+
+scrape_configs:
+  # Self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Testbed services
+  - job_name: 'testbed-gateway'
+    static_configs:
+      - targets: ['localhost:8080']
+    scrape_interval: 5s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    honor_labels: true
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'http_request_duration_seconds.*'
+        action: keep
+      - source_labels: [__name__]
+        regex: 'http_requests_total'
+        action: keep
+      - source_labels: [__name__]
+        regex: 'slo_.*'
+        action: keep
+
+  - job_name: 'testbed-policy-kernel'
+    static_configs:
+      - targets: ['localhost:8081']
+    scrape_interval: 5s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    honor_labels: true
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'policy_.*'
+        action: keep
+      - source_labels: [__name__]
+        regex: 'capability_.*'
+        action: keep
+
+  - job_name: 'testbed-ledger'
+    static_configs:
+      - targets: ['localhost:8082']
+    scrape_interval: 5s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    honor_labels: true
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'ledger_.*'
+        action: keep
+      - source_labels: [__name__]
+        regex: 'transaction_.*'
+        action: keep
+
+  - job_name: 'testbed-egress-firewall'
+    static_configs:
+      - targets: ['localhost:8083']
+    scrape_interval: 5s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    honor_labels: true
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'egress_.*'
+        action: keep
+      - source_labels: [__name__]
+        regex: 'firewall_.*'
+        action: keep
+
+  - job_name: 'testbed-retrieval-gateway'
+    static_configs:
+      - targets: ['localhost:8084']
+    scrape_interval: 5s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    honor_labels: true
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'retrieval_.*'
+        action: keep
+      - source_labels: [__name__]
+        regex: 'query_.*'
+        action: keep
+
+  # Node metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['localhost:8080']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    honor_labels: true
+
+  # Blackbox exporter for uptime monitoring
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://localhost:8080/health
+        - http://localhost:8081/health
+        - http://localhost:8082/health
+        - http://localhost:8083/health
+        - http://localhost:8084/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
+
+# Alerting rules
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - localhost:9093
+
+# Recording rules for performance metrics
+rule_files:
+  - "recording_rules.yml"
+
+

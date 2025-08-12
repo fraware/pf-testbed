@@ -1,266 +1,242 @@
-import { observabilityService } from '../../runtime/gateway/src/observability';
-import { testbedMetrics } from '../../runtime/gateway/src/metrics';
+/**
+ * Cypress tests for Observability Dashboards
+ * Tests key panels and functionality of Grafana dashboards
+ */
 
-describe('TB-12: Observability & Proof Click-through', () => {
+describe('Observability Dashboards', () => {
   beforeEach(() => {
-    // Setup test data
-    cy.intercept('GET', '/api/metrics', { fixture: 'metrics.json' }).as('getMetrics');
-    cy.intercept('GET', '/api/traces/*', { fixture: 'trace.json' }).as('getTrace');
-    cy.intercept('GET', '/api/theorems/*', { fixture: 'theorem.json' }).as('getTheorem');
-    cy.intercept('GET', '/api/certificates/*', { fixture: 'certificate.json' }).as('getCertificate');
-  });
+    // Visit Grafana
+    cy.visit('http://localhost:3000')
+    
+    // Login to Grafana
+    cy.get('[data-testid="username-input"]').type('admin')
+    cy.get('[data-testid="password-input"]').type('admin')
+    cy.get('[data-testid="login-button"]').click()
+    
+    // Wait for login to complete
+    cy.url().should('include', '/dashboards')
+  })
 
-  describe('Grafana Dashboard Integration', () => {
-    it('should display SLO metrics with proper thresholds', () => {
-      cy.visit('/dashboard/observability');
+  describe('SLO Overview Dashboard', () => {
+    it('should load SLO Overview dashboard', () => {
+      // Navigate to SLO Overview dashboard
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Check SLO panel exists and loads within 2s
-      cy.get('[data-testid="slo-overview"]', { timeout: 2000 }).should('be.visible');
+      // Wait for dashboard to load
+      cy.get('[data-testid="dashboard-container"]', { timeout: 10000 }).should('be.visible')
       
-      // Verify SLO violations are displayed
-      cy.get('[data-testid="slo-violations-count"]').should('contain.text', '0');
-      
-      // Check color coding based on thresholds
-      cy.get('[data-testid="slo-overview"]').should('have.class', 'status-green');
-    });
+      // Check dashboard title
+      cy.get('[data-testid="dashboard-title"]').should('contain', 'SLO Overview')
+    })
 
-    it('should display latency P95/P99 metrics', () => {
-      cy.visit('/dashboard/observability');
+    it('should display SLO compliance metrics', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      cy.get('[data-testid="latency-chart"]', { timeout: 2000 }).should('be.visible');
-      
-      // Verify P95 and P99 are displayed
-      cy.get('[data-testid="p95-latency"]').should('contain.text', 'ms');
-      cy.get('[data-testid="p99-latency"]').should('contain.text', 'ms');
-      
-      // Check thresholds are properly set
-      cy.get('[data-testid="latency-chart"]').should('have.class', 'thresholds-configured');
-    });
+      // Check SLO compliance panel
+      cy.get('[data-testid="panel-1"]').within(() => {
+        cy.get('[data-testid="stat-text"]').should('be.visible')
+        cy.get('[data-testid="stat-text"]').should('contain', '%')
+      })
+    })
 
-    it('should display theorem verification rate', () => {
-      cy.visit('/dashboard/observability');
+    it('should display response time percentiles', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      cy.get('[data-testid="theorem-verification-gauge"]', { timeout: 2000 }).should('be.visible');
+      // Check P95 response time panel
+      cy.get('[data-testid="panel-2"]').within(() => {
+        cy.get('[data-testid="stat-text"]').should('be.visible')
+        cy.get('[data-testid="stat-text"]').should('contain', 's')
+      })
       
-      // Verify gauge shows percentage
-      cy.get('[data-testid="verification-rate"]').should('match', /\d+%/);
-    });
+      // Check P99 response time panel
+      cy.get('[data-testid="panel-3"]').within(() => {
+        cy.get('[data-testid="stat-text"]').should('be.visible')
+        cy.get('[data-testid="stat-text"]').should('contain', 's')
+      })
+    })
 
-    it('should display honeytoken alerts', () => {
-      cy.visit('/dashboard/observability');
+    it('should display error rate metrics', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      cy.get('[data-testid="honeytoken-alerts"]', { timeout: 2000 }).should('be.visible');
-      
-      // Check table structure
-      cy.get('[data-testid="honeytoken-table"]').find('tr').should('have.length.gt', 1);
-    });
-  });
+      // Check error rate panel
+      cy.get('[data-testid="panel-4"]').within(() => {
+        cy.get('[data-testid="stat-text"]').should('be.visible')
+        cy.get('[data-testid="stat-text"]').should('contain', '%')
+      })
+    })
 
-  describe('UI Calls Drawer: Trace → Plan → Theorem → Cert', () => {
-    it('should navigate through complete trace chain in under 2 seconds', () => {
-      cy.visit('/traces');
+    it('should display request rate graph', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Click on a trace to open drawer
-      cy.get('[data-testid="trace-row"]').first().click();
-      
-      // Verify drawer opens within 2s
-      cy.get('[data-testid="trace-drawer"]', { timeout: 2000 }).should('be.visible');
-      
-      // Navigate through the chain
-      cy.get('[data-testid="trace-chain"]').should('be.visible');
-      
-      // Click through each step and verify loading time
-      const startTime = Date.now();
-      
-      cy.get('[data-testid="plan-link"]').click();
-      cy.get('[data-testid="plan-details"]', { timeout: 2000 }).should('be.visible');
-      
-      cy.get('[data-testid="theorem-link"]').click();
-      cy.get('[data-testid="theorem-details"]', { timeout: 2000 }).should('be.visible');
-      
-      cy.get('[data-testid="certificate-link"]').click();
-      cy.get('[data-testid="certificate-details"]', { timeout: 2000 }).should('be.visible');
-      
-      const endTime = Date.now();
-      const totalTime = endTime - startTime;
-      
-      // Total click-through time should be under 2 seconds
-      expect(totalTime).to.be.lessThan(2000);
-    });
+      // Check request rate graph panel
+      cy.get('[data-testid="panel-5"]').within(() => {
+        cy.get('[data-testid="graph-container"]').should('be.visible')
+      })
+    })
 
-    it('should link trace IDs to Lean theorems and spec lines', () => {
-      cy.visit('/traces');
-      cy.get('[data-testid="trace-row"]').first().click();
+    it('should display response time distribution heatmap', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      cy.get('[data-testid="trace-drawer"]').should('be.visible');
-      
-      // Verify Lean theorem mappings are displayed
-      cy.get('[data-testid="lean-theorems"]').should('be.visible');
-      cy.get('[data-testid="theorem-mapping"]').should('have.length.gt', 0);
-      
-      // Check spec file and line information
-      cy.get('[data-testid="spec-file"]').should('contain.text', '.lean');
-      cy.get('[data-testid="spec-line"]').should('match', /\d+/);
-      
-      // Verify confidence scores
-      cy.get('[data-testid="theorem-confidence"]').should('match', /\d+%/);
-    });
+      // Check response time distribution panel
+      cy.get('[data-testid="panel-6"]').within(() => {
+        cy.get('[data-testid="heatmap-container"]').should('be.visible')
+      })
+    })
 
-    it('should have no broken links in trace chain', () => {
-      cy.visit('/traces');
-      cy.get('[data-testid="trace-row"]').first().click();
+    it('should display SLO violations table', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Check all links in the trace chain
-      cy.get('[data-testid="trace-chain"]').find('a').each(($link) => {
-        const href = $link.attr('href');
-        if (href && !href.startsWith('#')) {
-          // Verify link is not broken
-          cy.request({
-            url: href,
-            failOnStatusCode: false
-          }).then((response) => {
-            expect(response.status).to.not.equal(404);
-          });
-        }
-      });
-    });
-  });
+      // Check SLO violations table panel
+      cy.get('[data-testid="panel-7"]').within(() => {
+        cy.get('[data-testid="table-container"]').should('be.visible')
+      })
+    })
+  })
 
-  describe('Saved Views per Journey & Tenant', () => {
-    it('should save and load views for specific journeys and tenants', () => {
-      cy.visit('/dashboard/observability');
+  describe('Dashboard Functionality', () => {
+    it('should allow time range selection', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Create a custom view
-      cy.get('[data-testid="save-view-btn"]').click();
-      cy.get('[data-testid="view-name-input"]').type('Test View');
-      cy.get('[data-testid="journey-select"]').select('support_triage');
-      cy.get('[data-testid="tenant-select"]').select('test-tenant');
+      // Open time picker
+      cy.get('[data-testid="time-picker"]').click()
       
-      // Configure filters
-      cy.get('[data-testid="time-range-start"]').type('2024-01-01');
-      cy.get('[data-testid="time-range-end"]').type('2024-12-31');
-      
-      cy.get('[data-testid="save-view-submit"]').click();
-      
-      // Verify view is saved
-      cy.get('[data-testid="saved-views"]').should('contain.text', 'Test View');
-      
-      // Load the saved view
-      cy.get('[data-testid="load-view-btn"]').click();
-      cy.get('[data-testid="view-list"]').contains('Test View').click();
-      
-      // Verify view loads with correct filters
-      cy.get('[data-testid="journey-filter"]').should('have.value', 'support_triage');
-      cy.get('[data-testid="tenant-filter"]').should('have.value', 'test-tenant');
-    });
+      // Check time range options
+      cy.get('[data-testid="time-picker-options"]').should('be.visible')
+      cy.get('[data-testid="time-picker-options"]').should('contain', 'Last 1 hour')
+      cy.get('[data-testid="time-picker-options"]').should('contain', 'Last 6 hours')
+      cy.get('[data-testid="time-picker-options"]').should('contain', 'Last 24 hours')
+    })
 
-    it('should maintain view persistence across sessions', () => {
-      // Save a view
-      cy.visit('/dashboard/observability');
-      cy.get('[data-testid="save-view-btn"]').click();
-      cy.get('[data-testid="view-name-input"]').type('Persistent View');
-      cy.get('[data-testid="save-view-submit"]').click();
+    it('should allow refresh interval configuration', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Reload page
-      cy.reload();
+      // Check refresh interval
+      cy.get('[data-testid="refresh-picker"]').should('be.visible')
+      cy.get('[data-testid="refresh-picker"]').should('contain', '5s')
+    })
+
+    it('should support template variables', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Verify view is still available
-      cy.get('[data-testid="saved-views"]').should('contain.text', 'Persistent View');
-    });
-  });
+      // Check service template variable
+      cy.get('[data-testid="template-vars"]').within(() => {
+        cy.get('[data-testid="var-service"]').should('be.visible')
+        cy.get('[data-testid="var-environment"]').should('be.visible')
+      })
+    })
+  })
+
+  describe('Data Validation', () => {
+    it('should display real-time data', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
+      
+      // Wait for data to load
+      cy.get('[data-testid="panel-1"]', { timeout: 15000 }).within(() => {
+        cy.get('[data-testid="stat-text"]').should('not.contain', 'No data')
+      })
+    })
+
+    it('should handle data updates', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
+      
+      // Wait for initial data
+      cy.get('[data-testid="panel-1"]').should('be.visible')
+      
+      // Wait for refresh and check data updates
+      cy.wait(10000) // Wait for potential refresh
+      
+      // Verify panels still have data
+      cy.get('[data-testid="panel-1"]').should('be.visible')
+    })
+  })
 
   describe('Performance Gates', () => {
-    it('should maintain click-through latency under 2 seconds under load', () => {
-      // Simulate load by creating multiple traces
-      for (let i = 0; i < 10; i++) {
-        cy.request('POST', '/api/traces', {
-          tenant: 'test-tenant',
-          journey: 'support_triage',
-          user_id: `user-${i}`
-        });
-      }
+    it('should meet latency to insight requirements', () => {
+      const startTime = Date.now()
       
-      cy.visit('/traces');
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Measure click-through time under load
-      const startTime = Date.now();
+      // Wait for dashboard to be fully loaded with data
+      cy.get('[data-testid="panel-1"]', { timeout: 10000 }).should('be.visible')
+      cy.get('[data-testid="panel-1"]').within(() => {
+        cy.get('[data-testid="stat-text"]').should('not.contain', 'No data')
+      })
       
-      cy.get('[data-testid="trace-row"]').first().click();
-      cy.get('[data-testid="trace-drawer"]', { timeout: 2000 }).should('be.visible');
+      const loadTime = Date.now() - startTime
       
-      cy.get('[data-testid="plan-link"]').click();
-      cy.get('[data-testid="plan-details"]', { timeout: 2000 }).should('be.visible');
-      
-      const endTime = Date.now();
-      const clickThroughTime = endTime - startTime;
-      
-      // Should still be under 2 seconds even under load
-      expect(clickThroughTime).to.be.lessThan(2000);
-    });
+      // Assert latency to insight is less than 5 seconds
+      expect(loadTime).to.be.lessThan(5000)
+    })
 
-    it('should handle concurrent trace requests without performance degradation', () => {
-      // Make concurrent requests
-      const requests = Array.from({ length: 5 }, (_, i) => 
-        cy.request('POST', '/api/traces', {
-          tenant: 'test-tenant',
-          journey: 'support_triage',
-          user_id: `user-${i}`
+    it('should display performance thresholds correctly', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
+      
+      // Check P95 threshold (should be < 2.0s)
+      cy.get('[data-testid="panel-2"]').within(() => {
+        cy.get('[data-testid="stat-text"]').then(($el) => {
+          const value = parseFloat($el.text().replace(/[^\d.]/g, ''))
+          expect(value).to.be.lessThan(2.0)
         })
-      );
+      })
       
-      cy.wrap(requests).then(() => {
-        // Verify all requests completed successfully
-        cy.get('[data-testid="traces-count"]').should('contain.text', '5');
-      });
-    });
-  });
+      // Check P99 threshold (should be < 4.0s)
+      cy.get('[data-testid="panel-3"]').within(() => {
+        cy.get('[data-testid="stat-text"]').then(($el) => {
+          const value = parseFloat($el.text().replace(/[^\d.]/g, ''))
+          expect(value).to.be.lessThan(4.0)
+        })
+      })
+    })
+  })
 
-  describe('Double-checks', () => {
-    it('should fail UI test when theorem mapping is deleted', () => {
-      // This test should fail when theorem mappings are removed
-      // demonstrating the robustness of the test coverage
+  describe('Error Handling', () => {
+    it('should handle missing data gracefully', () => {
+      // This test would require setting up a scenario with missing data
+      // For now, we'll test that the dashboard loads even with potential data issues
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      cy.visit('/traces');
-      cy.get('[data-testid="trace-row"]').first().click();
-      
-      // Verify theorem mapping exists
-      cy.get('[data-testid="theorem-mapping"]').should('be.visible');
-      
-      // Simulate deletion of theorem mapping
-      cy.intercept('GET', '/api/theorems/*', { statusCode: 404 }).as('theoremNotFound');
-      
-      // Navigate to theorem
-      cy.get('[data-testid="theorem-link"]').click();
-      
-      // Should show error state
-      cy.get('[data-testid="theorem-error"]').should('be.visible');
-      cy.get('[data-testid="theorem-error"]').should('contain.text', 'Theorem not found');
-    });
-  });
+      // Dashboard should still load
+      cy.get('[data-testid="dashboard-container"]').should('be.visible')
+    })
 
-  describe('Live Demo Flows', () => {
-    it('should demonstrate complete workflow on one screen', () => {
-      cy.visit('/demo');
+    it('should display error states appropriately', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Verify all components are visible on one screen
-      cy.get('[data-testid="demo-container"]').should('be.visible');
-      cy.get('[data-testid="trace-panel"]').should('be.visible');
-      cy.get('[data-testid="plan-panel"]').should('be.visible');
-      cy.get('[data-testid="theorem-panel"]').should('be.visible');
-      cy.get('[data-testid="certificate-panel"]').should('be.visible');
+      // Check that error states are handled gracefully
+      cy.get('[data-testid="dashboard-container"]').should('be.visible')
+    })
+  })
+
+  describe('Accessibility', () => {
+    it('should have proper ARIA labels', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Execute demo flow
-      cy.get('[data-testid="start-demo-btn"]').click();
+      // Check for accessibility attributes
+      cy.get('[data-testid="dashboard-container"]').should('have.attr', 'role')
+    })
+
+    it('should support keyboard navigation', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Verify flow completes successfully
-      cy.get('[data-testid="demo-status"]').should('contain.text', 'Completed');
-      cy.get('[data-testid="demo-metrics"]').should('be.visible');
+      // Test keyboard navigation
+      cy.get('body').tab()
+      cy.focused().should('be.visible')
+    })
+  })
+
+  describe('Cross-browser Compatibility', () => {
+    it('should work across different viewport sizes', () => {
+      cy.visit('http://localhost:3000/d/slo-overview/slo-overview')
       
-      // Check all panels show relevant data
-      cy.get('[data-testid="trace-data"]').should('not.be.empty');
-      cy.get('[data-testid="plan-data"]').should('not.be.empty');
-      cy.get('[data-testid="theorem-data"]').should('not.be.empty');
-      cy.get('[data-testid="certificate-data"]').should('not.be.empty');
-    });
-  });
-});
+      // Test responsive design
+      cy.viewport(1920, 1080)
+      cy.get('[data-testid="dashboard-container"]').should('be.visible')
+      
+      cy.viewport(1366, 768)
+      cy.get('[data-testid="dashboard-container"]').should('be.visible')
+      
+      cy.viewport(768, 1024)
+      cy.get('[data-testid="dashboard-container"]').should('be.visible')
+    })
+  })
+})

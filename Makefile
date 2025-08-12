@@ -1,18 +1,28 @@
 # Provability Fabric Testbed Makefile
 # 
 # Usage:
+#   make up              # Start all services (docker-compose up -d)
+#   make down            # Stop all services (docker-compose down)
+#   make logs            # Show service logs
+#   make seed            # Seed data and populate indices
+#   make report          # Generate testbed report
 #   make testbed-up      # Deploy testbed infrastructure
 #   make testbed-down    # Destroy testbed infrastructure
 #   make testbed-status  # Show testbed status
 #   make testbed-logs    # Show testbed logs
 
-.PHONY: help testbed-up testbed-down testbed-status testbed-logs testbed-clean
+.PHONY: help up down seed report testbed-up testbed-down testbed-status testbed-logs testbed-clean
 
 # Default target
 help:
 	@echo "Provability Fabric Testbed Management"
 	@echo ""
 	@echo "Available targets:"
+	@echo "  up              - Start all services (docker-compose up -d)"
+	@echo "  down            - Stop all services (docker-compose down)"
+	@echo "  logs            - Show service logs"
+	@echo "  seed            - Seed data and populate indices"
+	@echo "  report          - Generate testbed report"
 	@echo "  testbed-up      - Deploy testbed infrastructure (<15 min target)"
 	@echo "  testbed-down    - Destroy testbed infrastructure"
 	@echo "  testbed-status  - Show testbed status"
@@ -100,7 +110,7 @@ testbed-up: check-tools terraform-init
 	
 	@echo ""
 	@echo "🌐 Access URLs:"
-	@echo "  Grafana: http://localhost:3000 (admin/admin123)"
+	@echo "  Grafana: http://localhost:3100 (admin/admin123)"
 	@echo "  Prometheus: http://localhost:9090"
 	
 	@echo ""
@@ -325,7 +335,7 @@ setup: ## Initial setup
 	$(MAKE) build
 	$(MAKE) start
 	@echo "Setup complete! Access services at:"
-	@echo "  - Grafana Dashboard: http://localhost:3000"
+	@echo "  - Grafana Dashboard: http://localhost:3100"
 	@echo "  - Prometheus: http://localhost:9090"
 	@echo "  - Self-Serve Ingress: http://localhost:3001"
 	@echo "  - Testbed Gateway: http://localhost:3003"

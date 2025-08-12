@@ -1,0 +1,179 @@
+groups:
+  - name: testbed-performance
+    interval: 15s
+    rules:
+      # Response time percentiles
+      - record: http_request_duration_p50
+        expr: histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service, route))
+      
+      - record: http_request_duration_p95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service, route))
+      
+      - record: http_request_duration_p99
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service, route))
+      
+      - record: http_request_duration_p999
+        expr: histogram_quantile(0.999, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service, route))
+
+  - name: testbed-slos
+    interval: 30s
+    rules:
+      # SLO Compliance Ratio
+      - record: slo_compliance_ratio
+        expr: |
+          (
+            sum(rate(http_requests_total{status!~"5.."}[5m])) by (service)
+            /
+            sum(rate(http_requests_total[5m])) by (service)
+          )
+      
+      # SLO Error Budget
+      - record: slo_error_budget_remaining
+        expr: |
+          (
+            1 - slo_compliance_ratio
+          ) * 100
+      
+      # SLO Violations
+      - record: slo_violations_total
+        expr: |
+          sum(increase(http_requests_total{status=~"5.."}[1h])) by (service)
+      
+      # Response Time SLO
+      - record: slo_response_time_p95_violations
+        expr: |
+          sum(increase(http_requests_total{le="2.0"}[1h])) by (service)
+          /
+          sum(increase(http_requests_total[1h])) by (service)
+
+  - name: testbed-throughput
+    interval: 15s
+    rules:
+      # Request rate by service
+      - record: http_requests_per_second
+        expr: sum(rate(http_requests_total[5m])) by (service, method, route)
+      
+      # Error rate by service
+      - record: http_error_rate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+          /
+          sum(rate(http_requests_total[5m])) by (service)
+      
+      # Success rate by service
+      - record: http_success_rate
+        expr: |
+          sum(rate(http_requests_total{status!~"5.."}[5m])) by (service)
+          /
+          sum(rate(http_requests_total[5m])) by (service)
+
+  - name: testbed-capability
+    interval: 30s
+    rules:
+      # Capability usage
+      - record: capability_usage_total
+        expr: sum(increase(capability_calls_total[1h])) by (capability, tenant)
+      
+      # Capability violations
+      - record: capability_violations_total
+        expr: sum(increase(capability_denials_total[1h])) by (capability, tenant, reason)
+      
+      # Capability success rate
+      - record: capability_success_rate
+        expr: |
+          (
+            sum(rate(capability_calls_total[5m])) by (capability, tenant)
+            -
+            sum(rate(capability_denials_total[5m])) by (capability, tenant)
+          )
+          /
+          sum(rate(capability_calls_total[5m])) by (capability, tenant)
+
+  - name: testbed-honeytokens
+    interval: 60s
+    rules:
+      # Honeytoken trips
+      - record: honeytoken_trips_total
+        expr: sum(increase(honeytoken_trips_total[1h])) by (tenant, type, classification)
+      
+      # Honeytoken coverage
+      - record: honeytoken_coverage_ratio
+        expr: |
+          sum(honeytokens_active_total) by (tenant)
+          /
+          sum(honeytokens_total) by (tenant)
+      
+      # Honeytoken alert rate
+      - record: honeytoken_alert_rate
+        expr: sum(rate(honeytoken_alerts_total[5m])) by (tenant, severity)
+
+  - name: testbed-cost
+    interval: 60s
+    rules:
+      # Cost per 1000 calls
+      - record: cost_per_1000_calls
+        expr: |
+          (
+            sum(increase(api_cost_total[1h])) by (service, tenant)
+            /
+            sum(increase(api_calls_total[1h])) by (service, tenant)
+          ) * 1000
+      
+      # Total cost by service
+      - record: total_cost_by_service
+        expr: sum(increase(api_cost_total[1h])) by (service, tenant)
+      
+      # Cost efficiency
+      - record: cost_efficiency_ratio
+        expr: |
+          sum(increase(api_calls_total[1h])) by (service, tenant)
+          /
+          sum(increase(api_cost_total[1h])) by (service, tenant)
+
+  - name: testbed-egress
+    interval: 30s
+    rules:
+      # Egress certificate usage
+      - record: egress_certificate_usage
+        expr: sum(increase(egress_certificate_requests_total[1h])) by (service, destination)
+      
+      # Egress violations
+      - record: egress_violations_total
+        expr: sum(increase(egress_violations_total[1h])) by (service, destination, reason)
+      
+      # Egress success rate
+      - record: egress_success_rate
+        expr: |
+          (
+            sum(rate(egress_certificate_requests_total[5m])) by (service, destination)
+            -
+            sum(rate(egress_violations_total[5m])) by (service, destination)
+          )
+          /
+          sum(rate(egress_certificate_requests_total[5m])) by (service, destination)
+
+  - name: testbed-ledger
+    interval: 30s
+    rules:
+      # Transaction throughput
+      - record: ledger_transactions_per_second
+        expr: sum(rate(ledger_transactions_total[5m])) by (service, type)
+      
+      # Transaction latency
+      - record: ledger_transaction_latency_p95
+        expr: histogram_quantile(0.95, sum(rate(ledger_transaction_duration_seconds_bucket[5m])) by (le, service))
+      
+      # Transaction success rate
+      - record: ledger_transaction_success_rate
+        expr: |
+          sum(rate(ledger_transactions_total{status="success"}[5m])) by (service)
+          /
+          sum(rate(ledger_transactions_total[5m])) by (service)
+      
+      # Audit trail completeness
+      - record: ledger_audit_completeness
+        expr: |
+          sum(ledger_audit_events_total) by (service)
+          /
+          sum(ledger_transactions_total) by (service)
+

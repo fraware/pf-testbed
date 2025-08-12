@@ -1,0 +1,505 @@
+{
+  "info": {
+    "name": "Provability Fabric Testbed",
+    "description": "API collection for testing the Provability Fabric testbed endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "pf_signature",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "access_receipts",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pf_sig_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Gateway Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3003/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3003",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Ingress Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3001/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Ledger Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3002/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3002",
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Enhanced Validation",
+      "item": [
+        {
+          "name": "Generate Test PF Signature",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant\": \"acme\",\n  \"user_id\": \"user123\",\n  \"capabilities\": [\"support_triage\", \"expense_approval\"],\n  \"expires_in\": 3600\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3001/api/test/generate-signature",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["api", "test", "generate-signature"]
+            }
+          }
+        },
+        {
+          "name": "Generate Test Access Receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant\": \"acme\",\n  \"subject\": \"ticket_123\",\n  \"shard\": \"tenants/acme\",\n  \"query_hash\": \"abc123\",\n  \"result_hash\": \"def456\",\n  \"expires_in\": 1800\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3001/api/test/generate-signature",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["api", "test", "generate-receipt"]
+            }
+          }
+        },
+        {
+          "name": "Validate Request with PF-Sig",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-pf-signature",
+                "value": "{{pf_signature}}"
+              },
+              {
+                "key": "x-access-receipts",
+                "value": "{{access_receipts}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"support_triage\",\n  \"resource\": \"ticket_123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3001/api/validate-request",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["api", "validate-request"]
+            }
+          }
+        },
+        {
+          "name": "Test Missing PF-Sig (Should Return 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"support_triage\",\n  \"resource\": \"ticket_123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3001/api/validate-request",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["api", "validate-request"]
+            }
+          }
+        },
+        {
+          "name": "Test Invalid PF-Sig (Should Return 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-pf-signature",
+                "value": "invalid_signature_here"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"support_triage\",\n  \"resource\": \"ticket_123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3001/api/validate-request",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["api", "validate-request"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Generate PF-Sig",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant\": \"acme\",\n  \"user_id\": \"user123\",\n  \"capabilities\": [\"support_triage\", \"expense_approval\"],\n  \"expires_in\": 3600\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3001/auth/pf-sig",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["auth", "pf-sig"]
+            }
+          }
+        },
+        {
+          "name": "Validate PF-Sig",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{pf_sig_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"support_triage\",\n  \"resource\": \"ticket_123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3001/auth/validate",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["auth", "validate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Support Triage",
+      "item": [
+        {
+          "name": "Create Support Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{pf_sig_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Login issues\",\n  \"description\": \"Cannot access the system\",\n  \"priority\": \"high\",\n  \"category\": \"technical\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3003/api/support/tickets",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3003",
+              "path": ["api", "support", "tickets"]
+            }
+          }
+        },
+        {
+          "name": "Get Ticket Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{pf_sig_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3003/api/support/tickets/{{ticket_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3003",
+              "path": ["api", "support", "tickets", "{{ticket_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expense Approval",
+      "item": [
+        {
+          "name": "Submit Expense Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{pf_sig_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 150.00,\n  \"description\": \"Travel expenses\",\n  \"category\": \"travel\",\n  \"receipt_url\": \"https://example.com/receipt.pdf\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3003/api/expenses",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3003",
+              "path": ["api", "expenses"]
+            }
+          }
+        },
+        {
+          "name": "Approve Expense",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{pf_sig_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\",\n  \"approver_notes\": \"Expense approved\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3003/api/expenses/{{expense_id}}/approve",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3003",
+              "path": ["api", "expenses", "{{expense_id}}", "approve"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Data Access",
+      "item": [
+        {
+          "name": "Query Knowledge Base",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{pf_sig_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3003/api/kb/search?q={{query}}&tenant=acme",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3003",
+              "path": ["api", "kb", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "tenant",
+                  "value": "acme"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Access Receipt",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{pf_sig_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3003/api/receipts/{{receipt_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3003",
+              "path": ["api", "receipts", "{{receipt_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Monitoring",
+      "item": [
+        {
+          "name": "Get Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:9090/api/v1/query?query=testbed_request_duration_seconds",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "9090",
+              "path": ["api", "v1", "query"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "testbed_request_duration_seconds"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get SLO Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{grafana_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:3100/api/datasources/proxy/1/api/v1/query?query=testbed_slo_violations_total",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3100",
+              "path": ["api", "datasources", "proxy", "1", "api", "v1", "query"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "testbed_slo_violations_total"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "pf_sig_token",
+      "value": "your_pf_sig_token_here",
+      "type": "string"
+    },
+    {
+      "key": "ticket_id",
+      "value": "ticket_123",
+      "type": "string"
+    },
+    {
+      "key": "expense_id",
+      "value": "expense_456",
+      "type": "string"
+    },
+    {
+      "key": "receipt_id",
+      "value": "receipt_789",
+      "type": "string"
+    },
+    {
+      "key": "query",
+      "value": "login issues",
+      "type": "string"
+    },
+    {
+      "key": "grafana_token",
+      "value": "your_grafana_token_here",
+      "type": "string"
+    }
+  ]
+}

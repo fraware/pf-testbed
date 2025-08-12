@@ -1,0 +1,108 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        pip install -r requirements.txt
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Run tests
+      run: |
+        npm test
+        pytest testbed/tools/reporter/ --cov
+    
+    - name: Build Docker images
+      run: |
+        docker-compose build
+        docker tag pf-testbed-gateway:latest ${{ secrets.REGISTRY }}/pf-testbed-gateway:${{ github.sha }}
+        docker tag pf-testbed-ingress:latest ${{ secrets.REGISTRY }}/pf-testbed-ingress:${{ github.sha }}
+        docker tag pf-testbed-ledger:latest ${{ secrets.REGISTRY }}/pf-testbed-ledger:${{ github.sha }}
+    
+    - name: Push Docker images
+      run: |
+        echo ${{ secrets.REGISTRY_PASSWORD }} | docker login ${{ secrets.REGISTRY }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+        docker push ${{ secrets.REGISTRY }}/pf-testbed-gateway:${{ github.sha }}
+        docker push ${{ secrets.REGISTRY }}/pf-testbed-ingress:${{ github.sha }}
+        docker push ${{ secrets.REGISTRY }}/pf-testbed-ledger:${{ github.sha }}
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: '1.5.0'
+    
+    - name: Setup Google Cloud
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+    
+    - name: Setup kubectl
+      run: |
+        gcloud container clusters get-credentials ${{ secrets.CLUSTER_NAME }} --zone=${{ secrets.CLUSTER_ZONE }}
+    
+    - name: Deploy to Kubernetes
+      run: |
+        cd ops/k8s/overlays/${{ github.event.inputs.environment || 'staging' }}
+        kubectl apply -k .
+        kubectl set image deployment/pf-gateway pf-gateway=${{ secrets.REGISTRY }}/pf-testbed-gateway:${{ github.sha }}
+        kubectl set image deployment/pf-ingress pf-ingress=${{ secrets.REGISTRY }}/pf-testbed-ingress:${{ github.sha }}
+        kubectl set image deployment/pf-ledger pf-ledger=${{ secrets.REGISTRY }}/pf-testbed-ledger:${{ github.sha }}
+    
+    - name: Wait for deployment
+      run: |
+        kubectl rollout status deployment/pf-gateway --timeout=300s
+        kubectl rollout status deployment/pf-ingress --timeout=300s
+        kubectl rollout status deployment/pf-ledger --timeout=300s
+    
+    - name: Run health checks
+      run: |
+        kubectl get pods -l app=pf-system
+        kubectl get services -l app=pf-system
+    
+    - name: Notify deployment
+      if: success()
+      run: |
+        echo "Deployment to ${{ github.event.inputs.environment || 'staging' }} successful!"
+        echo "Commit: ${{ github.sha }}"
+        echo "Services deployed and healthy"
+    
+    - name: Notify failure
+      if: failure()
+      run: |
+        echo "Deployment to ${{ github.event.inputs.environment || 'staging' }} failed!"
+        echo "Check logs for details"

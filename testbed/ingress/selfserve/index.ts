@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import { createHash, randomBytes } from 'crypto';
 import { z } from 'zod';
+import { ValidationMiddleware, TenantRateLimiter, requestIdMiddleware, VALIDATION_ERROR_CODES } from './middleware/validation';
 
 // Self-serve ingress system for external partners
 export class SelfServeIngress {
@@ -11,9 +12,17 @@ export class SelfServeIngress {
   private tenants: Map<string, Tenant> = new Map();
   private apiKeys: Map<string, ApiKey> = new Map();
   private rateLimiters: Map<string, any> = new Map();
+  private validationMiddleware: ValidationMiddleware;
+  private tenantRateLimiter: TenantRateLimiter;
 
   constructor() {
     this.app = express();
+    
+    // Initialize validation middleware with secret key
+    const secretKey = process.env.PF_SIGNATURE_SECRET || 'default-secret-key-change-in-production';
+    this.validationMiddleware = new ValidationMiddleware(secretKey);
+    this.tenantRateLimiter = new TenantRateLimiter(15 * 60 * 1000, 100); // 15 min window, 100 requests
+    
     this.setupMiddleware();
     this.setupRoutes();
   }
@@ -29,6 +38,9 @@ export class SelfServeIngress {
     // Body parsing
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true }));
+
+    // Request ID middleware
+    this.app.use(requestIdMiddleware);
 
     // Global rate limiting
     this.app.use(rateLimit({
@@ -65,8 +77,21 @@ export class SelfServeIngress {
 
     // Protected routes (require API key)
     this.app.use('/api/*', this.authenticateApiKey.bind(this));
+    
+    // Validation endpoints with PF-Sig and Access Receipt validation
     this.app.post('/api/validate-pf-sig', this.handleValidatePfSig.bind(this));
     this.app.post('/api/validate-receipt', this.handleValidateReceipt.bind(this));
+    
+    // New validation endpoints with enhanced middleware
+    this.app.post('/api/validate-request', 
+      this.validationMiddleware.validateRequest,
+      this.tenantRateLimiter.limitByTenant,
+      this.handleValidateRequest.bind(this)
+    );
+    
+    // Test endpoints for generating signatures and receipts
+    this.app.post('/api/test/generate-signature', this.handleGenerateSignature.bind(this));
+    this.app.post('/api/test/generate-receipt', this.handleGenerateReceipt.bind(this));
   }
 
   // Signup handler
@@ -598,6 +623,111 @@ export class SelfServeIngress {
   // Get Express app for testing
   getApp(): express.Application {
     return this.app;
+  }
+
+  // New validation handler with enhanced middleware
+  private async handleValidateRequest(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      // At this point, validation middleware has already passed
+      // and tenant rate limiting has been applied
+      
+      res.json({
+        success: true,
+        message: 'Request validation successful',
+        data: {
+          tenant: req.tenant,
+          user_id: req.userId,
+          capabilities: req.capabilities,
+          validation_timestamp: new Date().toISOString(),
+          request_id: res.locals.requestId
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to process validation request'
+        },
+        timestamp: new Date().toISOString(),
+        request_id: res.locals.requestId
+      });
+    }
+  }
+
+  // Generate test PF signature
+  private async handleGenerateSignature(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { tenant, user_id, capabilities, expires_in } = req.body;
+      
+      if (!tenant || !user_id || !capabilities || !expires_in) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'Missing required fields: tenant, user_id, capabilities, expires_in'
+          }
+        });
+        return;
+      }
+
+      const signature = this.validationMiddleware.generateSignature({
+        tenant,
+        user_id,
+        capabilities,
+        expires_in
+      });
+
+      res.json({
+        success: true,
+        signature,
+        expires_at: new Date(Date.now() + expires_in * 1000).toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to generate signature'
+        }
+      });
+    }
+  }
+
+  // Generate test access receipt
+  private async handleGenerateReceipt(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { tenant, subject, shard, query_hash, result_hash, expires_in } = req.body;
+      
+      if (!tenant || !subject || !shard || !query_hash || !result_hash || !expires_in) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'Missing required fields: tenant, subject, shard, query_hash, result_hash, expires_in'
+          }
+        });
+        return;
+      }
+
+      const receipt = this.validationMiddleware.generateAccessReceipt({
+        tenant,
+        subject,
+        shard,
+        query_hash,
+        result_hash,
+        expires_in
+      });
+
+      res.json({
+        success: true,
+        receipt,
+        expires_at: receipt.expires_at
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to generate receipt'
+        }
+      });
+    }
   }
 }
 

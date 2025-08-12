@@ -1,0 +1,667 @@
+name: Security - Red Team + Vulnerability Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: "0 2 * * *"
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+  GO_VERSION: '1.21'
+
+jobs:
+  security-scanning:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pf_testbed_security
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+    
+    - name: Install dependencies
+      run: |
+        npm ci --prefer-offline
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r testbed/tools/requirements.txt
+    
+    - name: Run SAST analysis
+      uses: github/codeql-action/init@v2
+      with:
+        languages: javascript, python, go
+        queries: security-extended,security-and-quality
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:javascript,language:python,language:go"
+    
+    - name: Run dependency vulnerability scan
+      run: |
+        # Node.js dependencies
+        npm audit --audit-level=moderate --json > npm-audit.json || true
+        
+        # Python dependencies
+        pip install safety
+        safety check --json --output safety-report.json || true
+        
+        # Go dependencies
+        go list -json -deps ./... > go-deps.json
+        go mod verify
+    
+    - name: Run static security analysis
+      run: |
+        # Install security tools
+        pip install bandit semgrep
+        
+        # Run Bandit for Python
+        bandit -r testbed/tools/reporter/ -f json -o bandit-report.json || true
+        
+        # Run Semgrep
+        semgrep scan --config auto --json --output semgrep-report.json || true
+        
+        # Run ESLint security rules
+        npx eslint --ext .ts --config .eslintrc.security.js testbed/**/*.ts || true
+    
+    - name: Run container security scan
+      run: |
+        # Install Trivy
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.48.0
+        
+        # Build images for scanning
+        docker-compose build --no-cache
+        
+        # Scan all images
+        trivy image --severity HIGH,CRITICAL --format json --output trivy-report.json \
+          pf-testbed-gateway:latest \
+          pf-testbed-ingress:latest \
+          pf-testbed-ledger:latest || true
+        
+        # Scan base images
+        trivy image --severity HIGH,CRITICAL --format json --output trivy-base-report.json \
+          postgres:15-alpine \
+          prom/prometheus:latest \
+          node:18-alpine || true
+    
+    - name: Run secrets detection
+      run: |
+        # Install TruffleHog
+        pip install trufflehog
+        
+        # Scan for secrets in code
+        trufflehog --json --output trufflehog-report.json . || true
+        
+        # Install Gitleaks
+        curl -sSfL https://raw.githubusercontent.com/zricethezav/gitleaks/master/install.sh | sh -s v8.16.4
+        ./bin/gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
+    
+    - name: Validate security posture
+      run: |
+        # Create security artifacts directory
+        mkdir -p security-artifacts
+        
+        # Copy all security reports
+        cp *.json security-artifacts/ || true
+        
+        # Generate security summary
+        python -c "
+        import json
+        import os
+        
+        security_violations = []
+        critical_issues = 0
+        high_issues = 0
+        
+        # Check npm audit
+        if os.path.exists('npm-audit.json'):
+            with open('npm-audit.json', 'r') as f:
+                audit = json.load(f)
+                if audit.get('vulnerabilities'):
+                    for vuln in audit['vulnerabilities'].values():
+                        if vuln.get('severity') == 'critical':
+                            critical_issues += 1
+                        elif vuln.get('severity') == 'high':
+                            high_issues += 1
+        
+        # Check safety report
+        if os.path.exists('safety-report.json'):
+            with open('safety-report.json', 'r') as f:
+                safety = json.load(f)
+                for vuln in safety:
+                    if vuln.get('severity') == 'CRITICAL':
+                        critical_issues += 1
+                    elif vuln.get('severity') == 'HIGH':
+                        high_issues += 1
+        
+        # Check Trivy reports
+        for report_file in ['trivy-report.json', 'trivy-base-report.json']:
+            if os.path.exists(report_file):
+                with open(report_file, 'r') as f:
+                    trivy = json.load(f)
+                    for result in trivy.get('Results', []):
+                        for vuln in result.get('Vulnerabilities', []):
+                            if vuln.get('Severity') == 'CRITICAL':
+                                critical_issues += 1
+                            elif vuln.get('Severity') == 'HIGH':
+                                high_issues += 1
+        
+        # Check for secrets
+        if os.path.exists('gitleaks-report.json'):
+            with open('gitleaks-report.json', 'r') as f:
+                gitleaks = json.load(f)
+                if gitleaks:
+                    security_violations.append(f'Found {len(gitleaks)} potential secrets')
+        
+        # Generate summary
+        summary = {
+            'critical_issues': critical_issues,
+            'high_issues': high_issues,
+            'security_violations': security_violations,
+            'overall_status': 'PASS' if critical_issues == 0 and high_issues == 0 else 'FAIL'
+        }
+        
+        with open('security-artifacts/security-summary.json', 'w') as f:
+            json.dump(summary, f, indent=2)
+        
+        print(f'Security Summary: {summary}')
+        
+        # Fail on critical issues
+        if critical_issues > 0:
+            print(f'ERROR: {critical_issues} critical security issues found')
+            exit(1)
+        
+        if high_issues > 0:
+            print(f'WARNING: {high_issues} high security issues found')
+        
+        print('✅ Security scanning completed')
+        "
+    
+    - name: Upload security artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-artifacts-${{ github.run_number }}
+        path: security-artifacts/
+        retention-days: 30
+    
+    outputs:
+      security-status: ${{ job.status }}
+      vulnerability-count: ${{ steps.security-validation.outputs.issues }}
+
+  red-team-testing:
+    name: Red Team Testing
+    runs-on: ubuntu-latest
+    needs: security-scanning
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pf_testbed_redteam
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Install red team tools
+      run: |
+        # Install OWASP ZAP
+        curl -L https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_Linux.tar.gz | tar xz
+        sudo mv ZAP_2.14.0 /opt/zap
+        
+        # Install SQLMap
+        pip install sqlmap
+        
+        # Install Nikto
+        sudo apt-get update
+        sudo apt-get install -y nikto
+        
+        # Install Nmap
+        sudo apt-get install -y nmap
+    
+    - name: Build and start services
+      run: |
+        # Build services
+        docker-compose build --no-cache --parallel
+        
+        # Start services
+        docker-compose up -d
+        
+        # Wait for services to be healthy
+        echo "Waiting for services to be ready..."
+        
+        # Wait for Gateway
+        timeout 120 bash -c 'until curl -f http://localhost:3003/health; do sleep 2; done'
+        
+        # Wait for Ingress
+        timeout 120 bash -c 'until curl -f http://localhost:3001/health; do sleep 2; done'
+        
+        # Wait for Ledger
+        timeout 120 bash -c 'until curl -f http://localhost:3002/health; do sleep 2; done'
+        
+        echo "All services are healthy"
+    
+    - name: Run injection tests
+      run: |
+        # Create red team artifacts directory
+        mkdir -p redteam-artifacts
+        
+        # SQL Injection tests
+        echo "Running SQL injection tests..."
+        sqlmap -u "http://localhost:3001/api/test" --batch --random-agent --output-dir redteam-artifacts/sqlmap || true
+        
+        # XSS tests
+        echo "Running XSS tests..."
+        python -c "
+        import requests
+        import json
+        
+        xss_payloads = [
+            '<script>alert(\"XSS\")</script>',
+            'javascript:alert(\"XSS\")',
+            'onload=alert(\"XSS\")',
+            '"><script>alert(\"XSS\")</script>'
+        ]
+        
+        xss_results = []
+        
+        for payload in xss_payloads:
+            try:
+                response = requests.post('http://localhost:3001/api/test', 
+                                      json={'input': payload}, 
+                                      timeout=5)
+                if payload in response.text:
+                    xss_results.append({'payload': payload, 'status': 'VULNERABLE'})
+                else:
+                    xss_results.append({'payload': payload, 'status': 'SAFE'})
+            except Exception as e:
+                xss_results.append({'payload': payload, 'status': 'ERROR', 'error': str(e)})
+        
+        with open('redteam-artifacts/xss-test-results.json', 'w') as f:
+            json.dump(xss_results, f, indent=2)
+        
+        print('XSS tests completed')
+        "
+    
+    - name: Run authentication bypass tests
+      run: |
+        echo "Running authentication bypass tests..."
+        
+        # Test unauthorized access to protected endpoints
+        python -c "
+        import requests
+        import json
+        
+        protected_endpoints = [
+            'http://localhost:3003/api/admin/users',
+            'http://localhost:3003/api/admin/config',
+            'http://localhost:3002/api/ledger/admin',
+            'http://localhost:3001/api/admin/settings'
+        ]
+        
+        auth_bypass_results = []
+        
+        for endpoint in protected_endpoints:
+            try:
+                # Test without authentication
+                response = requests.get(endpoint, timeout=5)
+                if response.status_code == 200:
+                    auth_bypass_results.append({
+                        'endpoint': endpoint,
+                        'status': 'VULNERABLE',
+                        'response_code': response.status_code
+                    })
+                else:
+                    auth_bypass_results.append({
+                        'endpoint': endpoint,
+                        'status': 'PROTECTED',
+                        'response_code': response.status_code
+                    })
+            except Exception as e:
+                auth_bypass_results.append({
+                    'endpoint': endpoint,
+                    'status': 'ERROR',
+                    'error': str(e)
+                })
+        
+        with open('redteam-artifacts/auth-bypass-results.json', 'w') as f:
+            json.dump(auth_bypass_results, f, indent=2)
+        
+        print('Authentication bypass tests completed')
+        "
+    
+    - name: Run PII leak tests
+      run: |
+        echo "Running PII leak tests..."
+        
+        # Test for potential PII exposure
+        python -c "
+        import requests
+        import json
+        import re
+        
+        pii_patterns = {
+            'email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+            'phone': r'\\+?[1-9]\\d{1,14}',
+            'ssn': r'\\d{3}-\\d{2}-\\d{4}',
+            'credit_card': r'\\b\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}\\b'
+        }
+        
+        test_endpoints = [
+            'http://localhost:3001/api/test',
+            'http://localhost:3003/api/health',
+            'http://localhost:3002/api/health'
+        ]
+        
+        pii_leak_results = []
+        
+        for endpoint in test_endpoints:
+            try:
+                response = requests.get(endpoint, timeout=5)
+                content = response.text
+                
+                endpoint_leaks = []
+                for pii_type, pattern in pii_patterns.items():
+                    matches = re.findall(pattern, content)
+                    if matches:
+                        endpoint_leaks.append({
+                            'type': pii_type,
+                            'count': len(matches),
+                            'samples': matches[:3]  # Limit samples
+                        })
+                
+                if endpoint_leaks:
+                    pii_leak_results.append({
+                        'endpoint': endpoint,
+                        'status': 'PII_DETECTED',
+                        'leaks': endpoint_leaks
+                    })
+                else:
+                    pii_leak_results.append({
+                        'endpoint': endpoint,
+                        'status': 'CLEAN'
+                    })
+                    
+            except Exception as e:
+                pii_leak_results.append({
+                    'endpoint': endpoint,
+                    'status': 'ERROR',
+                    'error': str(e)
+                })
+        
+        with open('redteam-artifacts/pii-leak-results.json', 'w') as f:
+            json.dump(pii_leak_results, f, indent=2)
+        
+        print('PII leak tests completed')
+        "
+    
+    - name: Run OWASP ZAP scan
+      run: |
+        echo "Running OWASP ZAP scan..."
+        
+        # Start ZAP daemon
+        /opt/zap/zap.sh -daemon -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.addrs.addr.value=true -config api.addrs.addr.value.regex=true &
+        
+        # Wait for ZAP to start
+        sleep 30
+        
+        # Run ZAP scan
+        /opt/zap/zap-cli.sh --port 8080 quick-scan --self-contained \
+          --spider http://localhost:3001 \
+          --ajax-spider \
+          --scan http://localhost:3001 \
+          --output-format json \
+          --output redteam-artifacts/zap-scan-results.json || true
+        
+        # Stop ZAP
+        pkill -f zap
+    
+    - name: Validate red team results
+      run: |
+        echo "Validating red team test results..."
+        
+        # Check for critical security issues
+        python -c "
+        import json
+        import os
+        
+        critical_violations = []
+        
+        # Check XSS results
+        if os.path.exists('redteam-artifacts/xss-test-results.json'):
+            with open('redteam-artifacts/xss-test-results.json', 'r') as f:
+                xss_results = json.load(f)
+                for result in xss_results:
+                    if result.get('status') == 'VULNERABLE':
+                        critical_violations.append(f'XSS vulnerability: {result[\"payload\"]}')
+        
+        # Check auth bypass results
+        if os.path.exists('redteam-artifacts/auth-bypass-results.json'):
+            with open('redteam-artifacts/auth-bypass-results.json', 'r') as f:
+                auth_results = json.load(f)
+                for result in auth_results:
+                    if result.get('status') == 'VULNERABLE':
+                        critical_violations.append(f'Auth bypass: {result[\"endpoint\"]}')
+        
+        # Check PII leak results
+        if os.path.exists('redteam-artifacts/pii-leak-results.json'):
+            with open('redteam-artifacts/pii-leak-results.json', 'r') as f:
+                pii_results = json.load(f)
+                for result in pii_results:
+                    if result.get('status') == 'PII_DETECTED':
+                        critical_violations.append(f'PII leak: {result[\"endpoint\"]}')
+        
+        # Generate red team summary
+        summary = {
+            'critical_violations': critical_violations,
+            'overall_status': 'PASS' if not critical_violations else 'FAIL'
+        }
+        
+        with open('redteam-artifacts/redteam-summary.json', 'w') as f:
+            json.dump(summary, f, indent=2)
+        
+        print(f'Red Team Summary: {summary}')
+        
+        # Fail on any critical violations
+        if critical_violations:
+            print('❌ Critical security violations detected:')
+            for violation in critical_violations:
+                print(f'  - {violation}')
+            exit(1)
+        
+        print('✅ Red team testing completed - no critical violations')
+        "
+    
+    - name: Upload red team artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: redteam-artifacts-${{ github.run_number }}
+        path: redteam-artifacts/
+        retention-days: 30
+    
+    outputs:
+      redteam-status: ${{ job.status }}
+      security-violations: ${{ steps.redteam-validation.outputs.violations }}
+
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    needs: [security-scanning, red-team-testing]
+    
+    steps:
+    - name: Download security artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: security-artifacts-${{ github.run_number }}
+        path: ./security-artifacts
+    
+    - name: Download red team artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: redteam-artifacts-${{ github.run_number }}
+        path: ./redteam-artifacts
+    
+    - name: Final security validation
+      run: |
+        echo "Performing final security validation..."
+        
+        # Check security scanning results
+        if [ "${{ needs.security-scanning.result }}" != "success" ]; then
+          echo "❌ Security scanning failed"
+          exit 1
+        fi
+        
+        # Check red team results
+        if [ "${{ needs.red-team-testing.result }}" != "success" ]; then
+          echo "❌ Red team testing failed"
+          exit 1
+        fi
+        
+        # Validate security artifacts
+        if [ ! -f "security-artifacts/security-summary.json" ]; then
+          echo "❌ Security summary not found"
+          exit 1
+        fi
+        
+        if [ ! -f "redteam-artifacts/redteam-summary.json" ]; then
+          echo "❌ Red team summary not found"
+          exit 1
+        fi
+        
+        # Final validation
+        python -c "
+        import json
+        
+        # Check security summary
+        with open('security-artifacts/security-summary.json', 'r') as f:
+            security_summary = json.load(f)
+        
+        # Check red team summary
+        with open('redteam-artifacts/redteam-summary.json', 'r') as f:
+            redteam_summary = json.load(f)
+        
+        # Final validation
+        if security_summary.get('overall_status') != 'PASS':
+            print('❌ Security scanning failed')
+            exit(1)
+        
+        if redteam_summary.get('overall_status') != 'PASS':
+            print('❌ Red team testing failed')
+            exit(1)
+        
+        print('✅ Security gate passed - all security checks completed successfully')
+        "
+        
+        echo "✅ Security gate validation completed"
+    
+    outputs:
+      security-gate-status: ${{ job.status }}
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [security-scanning, red-team-testing, security-gate]
+    if: always()
+    
+    steps:
+    - name: Generate security summary
+      run: |
+        echo "## Security Validation Summary" >> security-summary.md
+        echo "" >> security-summary.md
+        echo "**Security Scanning:** ${{ needs.security-scanning.result }}" >> security-summary.md
+        echo "**Red Team Testing:** ${{ needs.red-team-testing.result }}" >> security-summary.md
+        echo "**Security Gate:** ${{ needs.security-gate.result }}" >> security-summary.md
+        echo "" >> security-summary.md
+        
+        if [ "${{ needs.security-gate.result }}" == "success" ]; then
+          echo "✅ **Overall Security Status: PASSED**" >> security-summary.md
+          echo "" >> security-summary.md
+          echo "All security checks completed successfully:" >> security-summary.md
+          echo "- SAST analysis (CodeQL)" >> security-summary.md
+          echo "- Dependency vulnerability scanning" >> security-summary.md
+          echo "- Container security scanning (Trivy)" >> security-summary.md
+          echo "- Secrets detection" >> security-summary.md
+          echo "- Red team testing (OWASP ZAP, SQLMap, etc.)" >> security-summary.md
+          echo "- Injection and PII leak testing" >> security-summary.md
+        else
+          echo "❌ **Overall Security Status: FAILED**" >> security-summary.md
+          echo "" >> security-summary.md
+          echo "Security validation encountered failures. Check the logs for details." >> security-summary.md
+        fi
+    
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('security-summary.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
