@@ -113,12 +113,12 @@ The testbed implements a complete end-to-end decision path with provable securit
 │ Observation │───▶  │   Retrieve   │───▶│    Plan     │───▶│   Kernel    │
 │             │      │  (Receipt)   │     │   (DSL)     │     │             │
 └─────────────┘      └──────────────┘     └─────────────┘     └─────────────┘
-                                                              │
-                                                              ▼
-┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌─────────────┐
-│ Safety Case │◀───│    Egress    │◀───│ Tool Broker │◀───│  Decision  │
-│             │    │   (Cert)     │    │             │    │             │
-└─────────────┘    └──────────────┘    └─────────────┘    └─────────────┘
+                                                                   │
+                                                                   ▼
+┌─────────────┐    ┌──────────────┐    ┌─────────────┐      ┌─────────────┐
+│ Safety Case │◀───│    Egress    │◀───│ Tool Broker │◀───│  Decision   │
+│             │    │   (Cert)     │    │             │      │             │
+└─────────────┘    └──────────────┘    └─────────────┘      └─────────────┘
 ```
 
 ## Service Level Objectives (SLOs)
