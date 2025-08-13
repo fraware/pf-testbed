@@ -1,4 +1,8 @@
-import { ToolCall, ToolResult, ToolTrace } from '../../runtime/gateway/src/types';
+import {
+  ToolCall,
+  ToolResult,
+  ToolTrace,
+} from "../../runtime/gateway/src/types";
 
 /**
  * Base interface for all tool emulators
@@ -7,15 +11,15 @@ export interface ToolEmulator {
   name: string;
   version: string;
   capabilities: string[];
-  
+
   // Core methods
   execute(call: ToolCall): Promise<ToolResult>;
   validateCapability(capability: string): boolean;
   getStatus(): ToolEmulatorStatus;
-  
+
   // Configuration
   configure(config: ToolEmulatorConfig): Promise<void>;
-  
+
   // Mock data management
   setMockData(data: any): void;
   getMockData(): any;
@@ -26,7 +30,7 @@ export interface ToolEmulator {
  * Configuration for tool emulators
  */
 export interface ToolEmulatorConfig {
-  mode: 'mock' | 'real' | 'hybrid';
+  mode: "mock" | "real" | "hybrid";
   rate_limit?: {
     requests_per_minute: number;
     burst_size: number;
@@ -57,14 +61,17 @@ export abstract class BaseToolEmulator implements ToolEmulator {
   public name: string;
   public version: string;
   public capabilities: string[];
-  
+
   protected config: ToolEmulatorConfig;
   protected startTime: number;
   protected totalCalls: number;
   protected successfulCalls: number;
   protected lastCallTime: number;
   protected mockData: any;
-  protected rateLimitWindow: { start: number; count: number } = { start: 0, count: 0 };
+  protected rateLimitWindow: { start: number; count: number } = {
+    start: 0,
+    count: 0,
+  };
 
   constructor(name: string, version: string, capabilities: string[]) {
     this.name = name;
@@ -82,7 +89,7 @@ export abstract class BaseToolEmulator implements ToolEmulator {
    */
   async execute(call: ToolCall): Promise<ToolResult> {
     const startTime = Date.now();
-    
+
     try {
       // Validate capability
       if (!this.validateCapability(call.capability)) {
@@ -91,7 +98,7 @@ export abstract class BaseToolEmulator implements ToolEmulator {
 
       // Check rate limiting
       if (!this.checkRateLimit()) {
-        throw new Error('Rate limit exceeded');
+        throw new Error("Rate limit exceeded");
       }
 
       // Update call tracking
@@ -100,11 +107,11 @@ export abstract class BaseToolEmulator implements ToolEmulator {
 
       // Execute based on mode
       let result: any;
-      if (this.config.mode === 'mock') {
+      if (this.config.mode === "mock") {
         result = await this.executeMock(call);
-      } else if (this.config.mode === 'real') {
+      } else if (this.config.mode === "real") {
         result = await this.executeReal(call);
-      } else if (this.config.mode === 'hybrid') {
+      } else if (this.config.mode === "hybrid") {
         // Use real for some operations, mock for others
         result = await this.executeHybrid(call);
       } else {
@@ -123,9 +130,9 @@ export abstract class BaseToolEmulator implements ToolEmulator {
           tenant: call.tenant,
           mode: this.config.mode,
           execution_time: Date.now() - startTime,
-          timestamp: call.timestamp
+          timestamp: call.timestamp,
         },
-        replayable: this.config.mode === 'mock'
+        replayable: this.config.mode === "mock",
       };
 
       // Update success tracking
@@ -137,14 +144,13 @@ export abstract class BaseToolEmulator implements ToolEmulator {
         result,
         capability_consumed: call.capability,
         trace,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-
     } catch (error) {
       return {
         id: this.generateId(),
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         capability_consumed: call.capability,
         trace: {
           id: this.generateId(),
@@ -156,12 +162,12 @@ export abstract class BaseToolEmulator implements ToolEmulator {
             capability: call.capability,
             tenant: call.tenant,
             mode: this.config.mode,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            timestamp: call.timestamp
+            error: error instanceof Error ? error.message : "Unknown error",
+            timestamp: call.timestamp,
           },
-          replayable: false
+          replayable: false,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
   }
@@ -179,13 +185,17 @@ export abstract class BaseToolEmulator implements ToolEmulator {
   getStatus(): ToolEmulatorStatus {
     const now = Date.now();
     const uptime = now - this.startTime;
-    
+
     // Calculate rate limit remaining
     let rateLimitRemaining = 0;
     if (this.config.rate_limit) {
       const windowStart = Math.floor(now / 60000) * 60000; // 1-minute windows
       if (windowStart === this.rateLimitWindow.start) {
-        rateLimitRemaining = Math.max(0, this.config.rate_limit.requests_per_minute - this.rateLimitWindow.count);
+        rateLimitRemaining = Math.max(
+          0,
+          this.config.rate_limit.requests_per_minute -
+            this.rateLimitWindow.count,
+        );
       } else {
         rateLimitRemaining = this.config.rate_limit.requests_per_minute;
       }
@@ -196,9 +206,10 @@ export abstract class BaseToolEmulator implements ToolEmulator {
       mode: this.config.mode,
       uptime,
       total_calls: this.totalCalls,
-      success_rate: this.totalCalls > 0 ? this.successfulCalls / this.totalCalls : 1,
+      success_rate:
+        this.totalCalls > 0 ? this.successfulCalls / this.totalCalls : 1,
       last_call: new Date(this.lastCallTime).toISOString(),
-      rate_limit_remaining: rateLimitRemaining
+      rate_limit_remaining: rateLimitRemaining,
     };
   }
 
@@ -207,18 +218,18 @@ export abstract class BaseToolEmulator implements ToolEmulator {
    */
   async configure(config: ToolEmulatorConfig): Promise<void> {
     this.config = config;
-    
+
     // Validate configuration
     if (config.timeout <= 0) {
-      throw new Error('Timeout must be positive');
+      throw new Error("Timeout must be positive");
     }
-    
+
     if (config.max_retries < 0) {
-      throw new Error('Max retries must be non-negative');
+      throw new Error("Max retries must be non-negative");
     }
-    
+
     if (config.rate_limit && config.rate_limit.requests_per_minute <= 0) {
-      throw new Error('Rate limit must be positive');
+      throw new Error("Rate limit must be positive");
     }
   }
 
@@ -260,7 +271,9 @@ export abstract class BaseToolEmulator implements ToolEmulator {
       return true;
     }
 
-    if (this.rateLimitWindow.count >= this.config.rate_limit.requests_per_minute) {
+    if (
+      this.rateLimitWindow.count >= this.config.rate_limit.requests_per_minute
+    ) {
       return false;
     }
 
@@ -293,11 +306,11 @@ export abstract class BaseToolEmulator implements ToolEmulator {
     // Simple deterministic hash based on seed and key
     const hash = this.simpleHash(this.config.seed + key);
     const mockData = this.mockData[key];
-    
+
     if (Array.isArray(mockData)) {
       return mockData[hash % mockData.length];
     }
-    
+
     return mockData || fallback;
   }
 
@@ -308,7 +321,7 @@ export abstract class BaseToolEmulator implements ToolEmulator {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash);
@@ -318,9 +331,9 @@ export abstract class BaseToolEmulator implements ToolEmulator {
    * Utility method to simulate network delay
    */
   protected async simulateDelay(): Promise<void> {
-    if (this.config.mode === 'mock') {
+    if (this.config.mode === "mock") {
       const delay = Math.random() * 100 + 50; // 50-150ms for mock mode
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
@@ -331,9 +344,9 @@ export abstract class BaseToolEmulator implements ToolEmulator {
     if (!this.config.seed) {
       return false;
     }
-    
+
     // Use seed to deterministically simulate errors
     const hash = this.simpleHash(this.config.seed + Date.now().toString());
-    return (hash % 100) < 5; // 5% error rate
+    return hash % 100 < 5; // 5% error rate
   }
 }

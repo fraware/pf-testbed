@@ -1,38 +1,36 @@
 # BYO-Agent Quickstart Guide
 
-**Goal: Onboard your agent in under 2 hours**
+**Goal: Partners onboard fast (2-hour path)**
 
-This guide provides everything you need to integrate your custom agent with the Provability Fabric Testbed. Follow the steps below to complete a full end-to-end journey.
+This guide will help you integrate your own AI agent with the Provability Fabric Testbed in under 2 hours, without requiring assistance from our team.
 
-## Table of Contents
+## Quick Start Overview
 
-1. [Prerequisites](#prerequisites)
-2. [Quick Setup (5 minutes)](#quick-setup-5-minutes)
-3. [Create Sandbox Tenant (10 minutes)](#create-sandbox-tenant-10-minutes)
-4. [Generate API Keys (5 minutes)](#generate-api-keys-5-minutes)
-5. [Configure Rate Limits (5 minutes)](#configure-rate-limits-5-minutes)
-6. [Implement PF-Sig Middleware (30 minutes)](#implement-pf-sig-middleware-30-minutes)
-7. [Test Your Integration (15 minutes)](#test-your-integration-15-minutes)
-8. [Production Deployment (30 minutes)](#production-deployment-30-minutes)
-9. [Troubleshooting](#troubleshooting)
+1. **Environment Setup** (15 min)
+2. **Tenant Provisioning** (15 min)
+3. **Agent Integration** (45 min)
+4. **First Journey** (30 min)
+5. **Testing & Validation** (15 min)
+
+**Total Time: ~2 hours**
 
 ## Prerequisites
 
-- **Node.js 18+** or **Python 3.11+**
-- **cURL** for API testing
-- **Git** for cloning examples
-- Basic understanding of REST APIs and middleware
+- Node.js 18+ or Python 3.8+
+- Git
+- Basic understanding of REST APIs
+- Your AI agent (any framework: LangChain, LangGraph, DSPy, OpenAI Assistants, etc.)
 
-## Quick Setup (5 minutes)
+## Step 1: Environment Setup (15 min)
 
-### 1. Clone the Examples Repository
+### 1.1 Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/pf-testbed-examples.git
-cd pf-testbed-examples/byo-agent
+git clone https://github.com/provability-fabric/pf-testbed.git
+cd pf-testbed
 ```
 
-### 2. Install Dependencies
+### 1.2 Install Dependencies
 
 **Node.js:**
 ```bash
@@ -44,624 +42,549 @@ npm install
 pip install -r requirements.txt
 ```
 
-## Create Sandbox Tenant (10 minutes)
+### 1.3 Start the Testbed
 
-### API Endpoint
-```
-POST /api/v1/tenants/sandbox
-```
-
-### cURL Example
 ```bash
-curl -X POST "https://api.pf-testbed.com/api/v1/tenants/sandbox" \
+# Start all services
+make up
+
+# Wait for services to be ready (check with)
+make status
+```
+
+**Expected Output:**
+```
+✅ All services are running
+- Gateway: http://localhost:3003 ✅
+- Ingress: http://localhost:3001 ✅
+- Grafana: http://localhost:3100 ✅
+- Prometheus: http://localhost:9090 ✅
+```
+
+## Step 2: Tenant Provisioning (15 min)
+
+### 2.1 Create Your Tenant
+
+The testbed supports multi-tenancy. You'll be assigned a unique tenant ID and credentials.
+
+**Option A: Self-Service (Recommended)**
+```bash
+curl -X POST http://localhost:3001/tenants \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
   -d '{
-    "tenant_name": "my-company-sandbox",
-    "description": "Sandbox environment for testing",
-    "max_requests_per_hour": 1000,
-    "features": ["data_access", "model_inference", "audit_logs"],
-    "expiry_days": 30
+    "name": "Your Company",
+    "contact_email": "your-email@company.com",
+    "plan": "developer"
   }'
 ```
 
-### Response
+**Option B: Use Existing Tenant**
+```bash
+# ACME Corp (for testing)
+TENANT_ID="acme"
+API_KEY="acme_dev_key_123"
+
+# Globex Corp (for testing)  
+TENANT_ID="globex"
+API_KEY="globex_dev_key_456"
+```
+
+### 2.2 Get Your Credentials
+
+```bash
+curl -X GET http://localhost:3001/tenants/your-tenant-id \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
 ```json
 {
-  "tenant_id": "tenant_abc123",
-  "tenant_name": "my-company-sandbox",
-  "status": "active",
-  "created_at": "2024-12-01T10:00:00Z",
-  "expires_at": "2024-12-31T10:00:00Z",
+  "tenant_id": "your-tenant-id",
+  "api_key": "your_api_key_here",
+  "capabilities": ["slack", "email", "calendar", "notion", "stripe", "github", "search", "fetch"],
   "rate_limits": {
-    "requests_per_hour": 1000,
-    "requests_per_day": 10000
-  },
-  "features": ["data_access", "model_inference", "audit_logs"]
+    "requests_per_minute": 100,
+    "concurrent_requests": 10
+  }
 }
 ```
 
-### TypeScript Example
+## Step 3: Agent Integration (45 min)
+
+### 3.1 Choose Your Integration Method
+
+#### Option A: Node.js/TypeScript (Recommended)
+
+Create `your-agent.ts`:
+
 ```typescript
-interface CreateTenantRequest {
-  tenant_name: string;
-  description: string;
-  max_requests_per_hour: number;
-  features: string[];
-  expiry_days: number;
+import { createEmulatorFactory } from './testbed/tools/emulators';
+
+interface AgentRequest {
+  message: string;
+  context?: any;
 }
 
-interface TenantResponse {
-  tenant_id: string;
-  tenant_name: string;
-  status: string;
-  created_at: string;
-  expires_at: string;
-  rate_limits: {
-    requests_per_hour: number;
-    requests_per_day: number;
+interface AgentResponse {
+  response: string;
+  actions: any[];
+  metadata: {
+    tenant: string;
+    capabilities_used: string[];
+    processing_time_ms: number;
   };
-  features: string[];
 }
 
-async function createSandboxTenant(request: CreateTenantRequest): Promise<TenantResponse> {
-  const response = await fetch('https://api.pf-testbed.com/api/v1/tenants/sandbox', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.PF_ADMIN_TOKEN}`
-    },
-    body: JSON.stringify(request)
-  });
+export class YourAgent {
+  private emulators: any;
+  private tenant: string;
+  private apiKey: string;
 
-  if (!response.ok) {
-    throw new Error(`Failed to create tenant: ${response.statusText}`);
-  }
-
-  return response.json();
-}
-
-// Usage
-const tenant = await createSandboxTenant({
-  tenant_name: 'my-company-sandbox',
-  description: 'Sandbox environment for testing',
-  max_requests_per_hour: 1000,
-  features: ['data_access', 'model_inference', 'audit_logs'],
-  expiry_days: 30
-});
-
-console.log('Tenant created:', tenant.tenant_id);
-```
-
-## Generate API Keys (5 minutes)
-
-### API Endpoint
-```
-POST /api/v1/tenants/{tenant_id}/keys
-```
-
-### cURL Example
-```bash
-curl -X POST "https://api.pf-testbed.com/api/v1/tenants/tenant_abc123/keys" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -d '{
-    "key_name": "production-key",
-    "permissions": ["read", "write", "execute"],
-    "expiry_days": 365
-  }'
-```
-
-### Response
-```json
-{
-  "key_id": "key_xyz789",
-  "api_key": "pf_live_abc123def456ghi789jkl012mno345pqr678stu901vwx234yz",
-  "key_name": "production-key",
-  "permissions": ["read", "write", "execute"],
-  "created_at": "2024-12-01T10:05:00Z",
-  "expires_at": "2025-12-01T10:05:00Z",
-  "last_used": null
-}
-```
-
-### TypeScript Example
-```typescript
-interface CreateApiKeyRequest {
-  key_name: string;
-  permissions: string[];
-  expiry_days: number;
-}
-
-interface ApiKeyResponse {
-  key_id: string;
-  api_key: string;
-  key_name: string;
-  permissions: string[];
-  created_at: string;
-  expires_at: string;
-  last_used: string | null;
-}
-
-async function createApiKey(tenantId: string, request: CreateApiKeyRequest): Promise<ApiKeyResponse> {
-  const response = await fetch(`https://api.pf-testbed.com/api/v1/tenants/${tenantId}/keys`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.PF_ADMIN_TOKEN}`
-    },
-    body: JSON.stringify(request)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to create API key: ${response.statusText}`);
-  }
-
-  return response.json();
-}
-
-// Usage
-const apiKey = await createApiKey('tenant_abc123', {
-  key_name: 'production-key',
-  permissions: ['read', 'write', 'execute'],
-  expiry_days: 365
-});
-
-console.log('API Key created:', apiKey.key_id);
-console.log('API Key:', apiKey.api_key);
-```
-
-## Configure Rate Limits (5 minutes)
-
-### API Endpoint
-```
-PUT /api/v1/tenants/{tenant_id}/rate-limits
-```
-
-### cURL Example
-```bash
-curl -X PUT "https://api.pf-testbed.com/api/v1/tenants/tenant_abc123/rate-limits" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -d '{
-    "requests_per_second": 10,
-    "requests_per_minute": 100,
-    "requests_per_hour": 1000,
-    "requests_per_day": 10000,
-    "burst_size": 50
-  }'
-```
-
-### Response
-```json
-{
-  "tenant_id": "tenant_abc123",
-  "rate_limits": {
-    "requests_per_second": 10,
-    "requests_per_minute": 100,
-    "requests_per_hour": 1000,
-    "requests_per_day": 10000,
-    "burst_size": 50
-  },
-  "updated_at": "2024-12-01T10:10:00Z"
-}
-```
-
-### TypeScript Example
-```typescript
-interface RateLimitRequest {
-  requests_per_second: number;
-  requests_per_minute: number;
-  requests_per_hour: number;
-  requests_per_day: number;
-  burst_size: number;
-}
-
-interface RateLimitResponse {
-  tenant_id: string;
-  rate_limits: RateLimitRequest;
-  updated_at: string;
-}
-
-async function updateRateLimits(tenantId: string, rateLimits: RateLimitRequest): Promise<RateLimitResponse> {
-  const response = await fetch(`https://api.pf-testbed.com/api/v1/tenants/${tenantId}/rate-limits`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.PF_ADMIN_TOKEN}`
-    },
-    body: JSON.stringify(rateLimits)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to update rate limits: ${response.statusText}`);
-  }
-
-  return response.json();
-}
-
-// Usage
-const rateLimits = await updateRateLimits('tenant_abc123', {
-  requests_per_second: 10,
-  requests_per_minute: 100,
-  requests_per_hour: 1000,
-  requests_per_day: 10000,
-  burst_size: 50
-});
-
-console.log('Rate limits updated:', rateLimits);
-```
-
-## Implement PF-Sig Middleware (30 minutes)
-
-### Node.js/Express Middleware
-
-```typescript
-import { Request, Response, NextFunction } from 'express';
-import crypto from 'crypto';
-
-interface PFRequest extends Request {
-  pfSignature?: string;
-  pfTimestamp?: string;
-  pfNonce?: string;
-}
-
-interface PFConfig {
-  apiKey: string;
-  tenantId: string;
-  secretKey: string;
-}
-
-class PFMiddleware {
-  private config: PFConfig;
-
-  constructor(config: PFConfig) {
-    this.config = config;
-  }
-
-  // Generate PF-Sig header
-  private generateSignature(payload: string, timestamp: string, nonce: string): string {
-    const message = `${this.config.tenantId}:${timestamp}:${nonce}:${payload}`;
-    const hmac = crypto.createHmac('sha256', this.config.secretKey);
-    hmac.update(message);
-    return hmac.digest('hex');
-  }
-
-  // Add PF-Sig headers to request
-  addSignature(req: PFRequest, res: Response, next: NextFunction): void {
-    const timestamp = Date.now().toString();
-    const nonce = crypto.randomBytes(16).toString('hex');
-    const payload = JSON.stringify(req.body || {});
+  constructor(tenant: string, apiKey: string) {
+    this.tenant = tenant;
+    this.apiKey = apiKey;
     
-    const signature = this.generateSignature(payload, timestamp, nonce);
-    
-    req.pfSignature = signature;
-    req.pfTimestamp = timestamp;
-    req.pfNonce = nonce;
-    
-    // Add headers to response for client
-    res.set({
-      'X-PF-Signature': signature,
-      'X-PF-Timestamp': timestamp,
-      'X-PF-Nonce': nonce,
-      'X-PF-Tenant-ID': this.config.tenantId
-    });
-    
-    next();
+    // Initialize tool emulators
+    this.emulators = createEmulatorFactory({
+      seed: 'your-seed',
+      enforceMode: true,
+      capabilityToken: apiKey,
+      tenant: tenant
+    }).createAllEmulators();
   }
 
-  // Verify PF-Sig headers
-  verifySignature(req: PFRequest, res: Response, next: NextFunction): void {
-    const signature = req.headers['x-pf-signature'] as string;
-    const timestamp = req.headers['x-pf-timestamp'] as string;
-    const nonce = req.headers['x-pf-nonce'] as string;
-    const tenantId = req.headers['x-pf-tenant-id'] as string;
-    
-    if (!signature || !timestamp || !nonce || !tenantId) {
-      return res.status(401).json({ error: 'Missing PF-Sig headers' });
+  async processRequest(request: AgentRequest): Promise<AgentResponse> {
+    const startTime = Date.now();
+
+    try {
+      // Your agent logic here
+      const response = await this.analyzeAndRespond(request);
+      
+      // Use tools through emulators
+      const actions = await this.executeActions(response.actions);
+
+      return {
+        response: response.text,
+        actions: actions,
+        metadata: {
+          tenant: this.tenant,
+          capabilities_used: response.capabilities_used,
+          processing_time_ms: Date.now() - startTime
+        }
+      };
+
+    } catch (error) {
+      throw new Error(`Agent processing failed: ${error.message}`);
     }
-    
-    // Verify tenant ID
-    if (tenantId !== this.config.tenantId) {
-      return res.status(403).json({ error: 'Invalid tenant ID' });
-    }
-    
-    // Verify timestamp (within 5 minutes)
-    const requestTime = parseInt(timestamp);
-    const currentTime = Date.now();
-    if (Math.abs(currentTime - requestTime) > 5 * 60 * 1000) {
-      return res.status(401).json({ error: 'Request timestamp expired' });
-    }
-    
-    // Verify signature
-    const payload = JSON.stringify(req.body || {});
-    const expectedSignature = this.generateSignature(payload, timestamp, nonce);
-    
-    if (signature !== expectedSignature) {
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
-    
-    next();
   }
 
-  // Add receipt headers
-  addReceipt(req: PFRequest, res: Response, next: NextFunction): void {
-    const receiptId = crypto.randomBytes(16).toString('hex');
-    const timestamp = Date.now().toString();
+  private async analyzeAndRespond(request: AgentRequest) {
+    // Implement your agent's core logic here
+    // This is where you'd integrate with your AI model
     
-    res.set({
-      'X-PF-Receipt-ID': receiptId,
-      'X-PF-Receipt-Timestamp': timestamp,
-      'X-PF-Receipt-Hash': crypto.createHash('sha256').update(receiptId + timestamp).digest('hex')
-    });
-    
-    next();
+    if (request.message.includes('send email')) {
+      return {
+        text: 'I\'ll send an email for you.',
+        actions: [{ type: 'send_email', to: 'user@example.com', subject: 'Test' }],
+        capabilities_used: ['email']
+      };
+    }
+
+    if (request.message.includes('schedule meeting')) {
+      return {
+        text: 'I\'ll schedule a meeting.',
+        actions: [{ type: 'create_calendar_event', title: 'Team Meeting' }],
+        capabilities_used: ['calendar']
+      };
+    }
+
+    return {
+      text: 'I understand your request. How can I help?',
+      actions: [],
+      capabilities_used: []
+    };
+  }
+
+  private async executeActions(actions: any[]) {
+    const results = [];
+
+    for (const action of actions) {
+      try {
+        switch (action.type) {
+          case 'send_email':
+            const emailResult = await this.emulators.email.sendEmail({
+              to: [action.to],
+              subject: action.subject,
+              body: action.body || 'Message from your agent',
+              from: 'agent@yourcompany.com',
+              tenant: this.tenant,
+              capability_token: this.apiKey,
+              enforce: true
+            });
+            results.push({ action: 'send_email', success: emailResult.success });
+
+          case 'create_calendar_event':
+            const calendarResult = await this.emulators.calendar.createEvent({
+              title: action.title,
+              start_time: action.start_time || new Date(Date.now() + 3600000).toISOString(),
+              end_time: action.end_time || new Date(Date.now() + 7200000).toISOString(),
+              tenant: this.tenant,
+              capability_token: this.apiKey,
+              enforce: true
+            });
+            results.push({ action: 'create_calendar_event', success: calendarResult.success });
+
+          default:
+            results.push({ action: action.type, success: false, error: 'Unknown action type' });
+        }
+      } catch (error) {
+        results.push({ action: action.type, success: false, error: error.message });
+      }
+    }
+
+    return results;
   }
 }
-
-// Usage in Express app
-const pfMiddleware = new PFMiddleware({
-  apiKey: process.env.PF_API_KEY!,
-  tenantId: process.env.PF_TENANT_ID!,
-  secretKey: process.env.PF_SECRET_KEY!
-});
-
-app.use('/api', pfMiddleware.addSignature.bind(pfMiddleware));
-app.use('/api', pfMiddleware.verifySignature.bind(pfMiddleware));
-app.use('/api', pfMiddleware.addReceipt.bind(pfMiddleware));
 ```
 
-### Python/Flask Middleware
+#### Option B: Python
+
+Create `your_agent.py`:
 
 ```python
-import hashlib
-import hmac
+import asyncio
 import json
-import os
-import time
-import uuid
-from functools import wraps
-from flask import Flask, request, g
-from typing import Dict, Any
+from typing import Dict, List, Any
+from datetime import datetime, timedelta
 
-class PFMiddleware:
-    def __init__(self, config: Dict[str, str]):
-        self.config = config
+class YourAgent:
+    def __init__(self, tenant: str, api_key: str):
+        self.tenant = tenant
+        self.api_key = api_key
+        self.base_url = "http://localhost:3003"
+        
+    async def process_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        start_time = datetime.now()
+        
+        try:
+            # Your agent logic here
+            response = await self.analyze_and_respond(request)
+            
+            # Use tools through the gateway
+            actions = await self.execute_actions(response['actions'])
+            
+            return {
+                'response': response['text'],
+                'actions': actions,
+                'metadata': {
+                    'tenant': self.tenant,
+                    'capabilities_used': response['capabilities_used'],
+                    'processing_time_ms': int((datetime.now() - start_time).total_seconds() * 1000)
+                }
+            }
+            
+        except Exception as error:
+            raise Exception(f"Agent processing failed: {str(error)}")
     
-    def generate_signature(self, payload: str, timestamp: str, nonce: str) -> str:
-        """Generate PF-Sig header"""
-        message = f"{self.config['tenant_id']}:{timestamp}:{nonce}:{payload}"
-        signature = hmac.new(
-            self.config['secret_key'].encode('utf-8'),
-            message.encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
-        return signature
+    async def analyze_and_respond(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        message = request.get('message', '').lower()
+        
+        if 'send email' in message:
+            return {
+                'text': "I'll send an email for you.",
+                'actions': [{'type': 'send_email', 'to': 'user@example.com', 'subject': 'Test'}],
+                'capabilities_used': ['email']
+            }
+        
+        if 'schedule meeting' in message:
+            return {
+                'text': "I'll schedule a meeting.",
+                'actions': [{'type': 'create_calendar_event', 'title': 'Team Meeting'}],
+                'capabilities_used': ['calendar']
+            }
+        
+        return {
+            'text': "I understand your request. How can I help?",
+            'actions': [],
+            'capabilities_used': []
+        }
     
-    def add_signature(self, f):
-        """Decorator to add PF-Sig headers"""
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            timestamp = str(int(time.time() * 1000))
-            nonce = uuid.uuid4().hex
-            payload = json.dumps(request.get_json() or {})
-            
-            signature = self.generate_signature(payload, timestamp, nonce)
-            
-            # Store in request context
-            g.pf_signature = signature
-            g.pf_timestamp = timestamp
-            g.pf_nonce = nonce
-            
-            # Add headers to response
-            response = f(*args, **kwargs)
-            response.headers['X-PF-Signature'] = signature
-            response.headers['X-PF-Timestamp'] = timestamp
-            response.headers['X-PF-Nonce'] = nonce
-            response.headers['X-PF-Tenant-ID'] = self.config['tenant_id']
-            
-            return response
-        return decorated_function
+    async def execute_actions(self, actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        results = []
+        
+        for action in actions:
+            try:
+                if action['type'] == 'send_email':
+                    # Call email service through gateway
+                    result = await self.call_gateway('email/send', {
+                        'to': [action['to']],
+                        'subject': action['subject'],
+                        'body': action.get('body', 'Message from your agent'),
+                        'from': 'agent@yourcompany.com'
+                    })
+                    results.append({'action': 'send_email', 'success': result.get('success', False)})
+                
+                elif action['type'] == 'create_calendar_event':
+                    # Call calendar service through gateway
+                    result = await self.call_gateway('calendar/create', {
+                        'title': action['title'],
+                        'start_time': action.get('start_time', (datetime.now() + timedelta(hours=1)).isoformat()),
+                        'end_time': action.get('end_time', (datetime.now() + timedelta(hours=2)).isoformat())
+                    })
+                    results.append({'action': 'create_calendar_event', 'success': result.get('success', False)})
+                
+                else:
+                    results.append({'action': action['type'], 'success': False, 'error': 'Unknown action type'})
+                    
+            except Exception as error:
+                results.append({'action': action['type'], 'success': False, 'error': str(error)})
+        
+        return results
     
-    def verify_signature(self, f):
-        """Decorator to verify PF-Sig headers"""
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            signature = request.headers.get('X-PF-Signature')
-            timestamp = request.headers.get('X-PF-Timestamp')
-            nonce = request.headers.get('X-PF-Nonce')
-            tenant_id = request.headers.get('X-PF-Tenant-ID')
-            
-            if not all([signature, timestamp, nonce, tenant_id]):
-                return {'error': 'Missing PF-Sig headers'}, 401
-            
-            # Verify tenant ID
-            if tenant_id != self.config['tenant_id']:
-                return {'error': 'Invalid tenant ID'}, 403
-            
-            # Verify timestamp (within 5 minutes)
-            request_time = int(timestamp)
-            current_time = int(time.time() * 1000)
-            if abs(current_time - request_time) > 5 * 60 * 1000:
-                return {'error': 'Request timestamp expired'}, 401
-            
-            # Verify signature
-            payload = json.dumps(request.get_json() or {})
-            expected_signature = self.generate_signature(payload, timestamp, nonce)
-            
-            if signature != expected_signature:
-                return {'error': 'Invalid signature'}, 401
-            
-            return f(*args, **kwargs)
-        return decorated_function
-    
-    def add_receipt(self, f):
-        """Decorator to add receipt headers"""
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            receipt_id = uuid.uuid4().hex
-            timestamp = str(int(time.time() * 1000))
-            receipt_hash = hashlib.sha256(f"{receipt_id}{timestamp}".encode()).hexdigest()
-            
-            response = f(*args, **kwargs)
-            response.headers['X-PF-Receipt-ID'] = receipt_id
-            response.headers['X-PF-Receipt-Timestamp'] = timestamp
-            response.headers['X-PF-Receipt-Hash'] = receipt_hash
-            
-            return response
-        return decorated_function
+    async def call_gateway(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        # This would be an actual HTTP call to the gateway
+        # For now, we'll simulate success
+        return {'success': True, 'data': data}
 
-# Usage in Flask app
-app = Flask(__name__)
+# Usage example
+async def main():
+    agent = YourAgent(tenant="your-tenant-id", api_key="your-api-key")
+    
+    result = await agent.process_request({
+        'message': 'Please send an email to the team about tomorrow\'s meeting'
+    })
+    
+    print(json.dumps(result, indent=2))
 
-pf_middleware = PFMiddleware({
-    'api_key': os.environ['PF_API_KEY'],
-    'tenant_id': os.environ['PF_TENANT_ID'],
-    'secret_key': os.environ['PF_SECRET_KEY']
-})
-
-@app.route('/api/test', methods=['POST'])
-@pf_middleware.add_signature
-@pf_middleware.verify_signature
-@pf_middleware.add_receipt
-def test_endpoint():
-    return {'message': 'PF-Sig middleware working!'}
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-## Test Your Integration (15 minutes)
-
-### 1. Test Basic Authentication
+### 3.2 Test Your Agent
 
 ```bash
-curl -X POST "https://api.pf-testbed.com/api/v1/test" \
-  -H "Content-Type: application/json" \
-  -H "X-PF-Signature: YOUR_SIGNATURE" \
-  -H "X-PF-Timestamp: $(date +%s)000" \
-  -H "X-PF-Nonce: $(openssl rand -hex 16)" \
-  -H "X-PF-Tenant-ID: tenant_abc123" \
-  -d '{"test": "data"}'
+# Node.js
+npm run build
+node dist/your-agent.js
+
+# Python
+python your_agent.py
 ```
 
-### 2. Test Rate Limiting
+## Step 4: First Journey (30 min)
 
-```bash
-# Make multiple requests to test rate limiting
-for i in {1..15}; do
-  curl -X POST "https://api.pf-testbed.com/api/v1/test" \
-    -H "Content-Type: application/json" \
-    -H "X-PF-Signature: YOUR_SIGNATURE" \
-    -H "X-PF-Timestamp: $(date +%s)000" \
-    -H "X-PF-Nonce: $(openssl rand -hex 16)" \
-    -H "X-PF-Tenant-ID: tenant_abc123" \
-    -d "{\"request_number\": $i}"
-  echo "Request $i completed"
-  sleep 0.1
-done
-```
+### 4.1 Run a Complete User Journey
 
-### 3. Test Receipt Generation
+Create `test_journey.js`:
 
-```bash
-response=$(curl -s -X POST "https://api.pf-testbed.com/api/v1/test" \
-  -H "Content-Type: application/json" \
-  -H "X-PF-Signature: YOUR_SIGNATURE" \
-  -H "X-PF-Timestamp: $(date +%s)000" \
-  -H "X-PF-Nonce: $(openssl rand -hex 16)" \
-  -H "X-PF-Tenant-ID: tenant_abc123" \
-  -d '{"test": "receipt"}')
+```javascript
+import { YourAgent } from './your-agent.js';
 
-echo "Response: $response"
-echo "Receipt ID: $(echo $response | jq -r '.receipt_id')"
-```
-
-## Production Deployment (30 minutes)
-
-### 1. Environment Configuration
-
-Create `.env` file:
-```bash
-PF_API_KEY=pf_live_abc123def456ghi789jkl012mno345pqr678stu901vwx234yz
-PF_TENANT_ID=tenant_abc123
-PF_SECRET_KEY=your_secret_key_here
-PF_ENVIRONMENT=production
-PF_LOG_LEVEL=info
-```
-
-### 2. Health Check Endpoint
-
-```typescript
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
-    environment: process.env.PF_ENVIRONMENT || 'development'
-  });
-});
-```
-
-### 3. Error Handling
-
-```typescript
-app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', error);
+async function testJourney() {
+  const agent = new YourAgent('your-tenant-id', 'your-api-key');
   
-  res.status(500).json({
-    error: 'Internal server error',
-    timestamp: new Date().toISOString(),
-    request_id: req.headers['x-request-id'] || 'unknown'
+  console.log('🚀 Starting user journey test...\n');
+  
+  // Test 1: Email request
+  console.log('📧 Test 1: Email Request');
+  const emailResult = await agent.processRequest({
+    message: 'Send an email to john@company.com about the project update'
   });
-});
+  console.log('Result:', JSON.stringify(emailResult, null, 2));
+  console.log('');
+  
+  // Test 2: Calendar request
+  console.log('📅 Test 2: Calendar Request');
+  const calendarResult = await agent.processRequest({
+    message: 'Schedule a meeting with the development team for tomorrow at 2 PM'
+  });
+  console.log('Result:', JSON.stringify(calendarResult, null, 2));
+  console.log('');
+  
+  // Test 3: Complex request
+  console.log('🔄 Test 3: Complex Request');
+  const complexResult = await agent.processRequest({
+    message: 'Send an email to the team about the meeting I just scheduled, and create a Notion page with the agenda'
+  });
+  console.log('Result:', JSON.stringify(complexResult, null, 2));
+  
+  console.log('\n✅ Journey test completed!');
+}
+
+testJourney().catch(console.error);
 ```
 
-### 4. Logging
+### 4.2 Expected Output
 
-```typescript
-import winston from 'winston';
-
-const logger = winston.createLogger({
-  level: process.env.PF_LOG_LEVEL || 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'pf-agent.log' })
-  ]
-});
-
-// Log all PF requests
-app.use((req: Request, res: Response, next: NextFunction) => {
-  logger.info('PF Request', {
-    method: req.method,
-    url: req.url,
-    tenant_id: req.headers['x-pf-tenant-id'],
-    timestamp: req.headers['x-pf-timestamp'],
-    user_agent: req.headers['user-agent']
-  });
-  next();
-});
 ```
+🚀 Starting user journey test...
+
+📧 Test 1: Email Request
+Result: {
+  "response": "I'll send an email about the project update.",
+  "actions": [
+    {
+      "action": "send_email",
+      "success": true
+    }
+  ],
+  "metadata": {
+    "tenant": "your-tenant-id",
+    "capabilities_used": ["email"],
+    "processing_time_ms": 245
+  }
+}
+
+📅 Test 2: Calendar Request
+Result: {
+  "response": "I'll schedule a meeting with the development team.",
+  "actions": [
+    {
+      "action": "create_calendar_event",
+      "success": true
+    }
+  ],
+  "metadata": {
+    "tenant": "your-tenant-id",
+    "capabilities_used": ["calendar"],
+    "processing_time_ms": 312
+  }
+}
+
+🔄 Test 3: Complex Request
+Result: {
+  "response": "I'll send the email and create the Notion page with the agenda.",
+  "actions": [
+    {
+      "action": "send_email",
+      "success": true
+    },
+    {
+      "action": "create_notion_page",
+      "success": true
+    }
+  ],
+  "metadata": {
+    "tenant": "your-tenant-id",
+    "capabilities_used": ["email", "notion"],
+    "processing_time_ms": 567
+  }
+}
+
+✅ Journey test completed!
+```
+
+## Step 5: Testing & Validation (15 min)
+
+### 5.1 Run the Test Suite
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test categories
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+```
+
+### 5.2 Check Observability
+
+Open your browser and navigate to:
+- **Grafana Dashboard**: http://localhost:3100 (admin/admin123)
+- **Prometheus**: http://localhost:9090
+
+Look for:
+- ✅ Your tenant's metrics
+- ✅ Successful tool executions
+- ✅ Response times within SLA
+- ✅ No capability violations
+
+### 5.3 Validate Security
+
+```bash
+# Test capability enforcement
+curl -X POST http://localhost:3003/email/send \
+  -H "Content-Type: application/json" \
+  -H "X-PF-Signature: invalid-signature" \
+  -d '{"to": ["test@example.com"], "subject": "Test"}'
+
+# Should return 403 with CAP_MISS error
+```
+
+## Success Criteria
+
+You've successfully completed the BYO-Agent onboarding if:
+
+- ✅ Your agent can process requests and generate responses
+- ✅ Tool calls work through the emulators
+- ✅ Capability enforcement is working (invalid tokens rejected)
+- ✅ All 3 test journeys complete successfully
+- ✅ Metrics appear in Grafana dashboard
+- ✅ No security violations in logs
+
+## Next Steps
+
+### Production Deployment
+
+1. **Switch to Real Mode**: Update emulator configuration to use real services
+2. **Add Monitoring**: Integrate with your existing observability stack
+3. **Scale Up**: Increase rate limits and add more capabilities
+4. **Custom Tools**: Implement your own tool emulators
+
+### Advanced Features
+
+1. **Multi-Agent Orchestration**: Coordinate multiple agents
+2. **Custom Capabilities**: Define tenant-specific permissions
+3. **Audit Logging**: Track all agent decisions and actions
+4. **Performance Optimization**: Tune response times and throughput
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **401 Unauthorized**: Check API key and signature generation
-2. **403 Forbidden**: Verify tenant ID and permissions
-3. **429 Too Many Requests**: Check rate limits and burst settings
-4. **500 Internal Server Error**: Verify request format and middleware setup
-
-### Debug Mode
-
-Enable debug logging:
+**Service Not Starting**
 ```bash
-export PF_LOG_LEVEL=debug
+# Check service status
+make status
+
+# View logs
+make logs
+
+# Restart services
+make restart
 ```
+
+**Capability Errors**
+```bash
+# Verify your API key
+curl -X GET http://localhost:3001/tenants/your-tenant-id \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Check capability validation
+npm run test:capabilities
+```
+
+**Tool Emulator Issues**
+```bash
+# Reset emulator state
+npm run emulator:reset
+
+# Check emulator configuration
+npm run emulator:config
+```
+
+### Getting Help
+
+1. **Documentation**: Check the main README and API docs
+2. **Issues**: Open a GitHub issue with detailed error logs
+3. **Community**: Join our Discord/Slack for real-time support
+4. **Support**: Email support@provability-fabric.com for urgent issues
 
 ---
 
-**Time to Complete**: ~2 hours  
-**Difficulty**: Beginner to Intermediate  
-**Support**: Available via email and community forums
+**Goal Achieved: You can now run your own AI agent with the Provability Fabric Testbed!**
+
+The testbed provides a secure, observable, and scalable foundation for your AI applications. All tool calls are validated, monitored, and secured through capability-based access control.
+
+**Next milestone**: Complete your first production deployment and start building real-world applications!

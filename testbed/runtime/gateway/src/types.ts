@@ -13,12 +13,12 @@ export interface Plan {
 
 export interface PlanStep {
   id: string;
-  type: 'tool_call' | 'decision' | 'retrieval' | 'verification';
+  type: "tool_call" | "decision" | "retrieval" | "verification";
   tool?: string;
   parameters?: Record<string, any>;
   capability?: string;
   receipt?: string;
-  status: 'pending' | 'executing' | 'completed' | 'failed';
+  status: "pending" | "executing" | "completed" | "failed";
   result?: any;
   error?: string;
   timestamp: string;
@@ -30,7 +30,7 @@ export interface PlanMetadata {
   agent: string;
   model: string;
   confidence: number;
-  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  risk_level: "low" | "medium" | "high" | "critical";
   tags: string[];
   context: Record<string, any>;
 }
@@ -88,18 +88,18 @@ export interface AgentRunner {
   name: string;
   version: string;
   capabilities: string[];
-  
+
   // Core interface methods
   plan(json: any): Promise<Plan>;
   verifyPlan(plan: Plan): Promise<VerificationResult>;
   executePlan(plan: Plan): Promise<Plan>;
-  
+
   // Tool execution
   executeTool(call: ToolCall): Promise<ToolResult>;
-  
+
   // Trace export
   exportTrace(plan_id: string): Promise<any>;
-  
+
   // Configuration
   configure(config: AgentConfig): Promise<void>;
   getStatus(): Promise<AgentStatus>;
@@ -170,63 +170,66 @@ export interface ExecutionResult {
 
 // Error types
 export class PlanValidationError extends Error {
-  constructor(message: string, public errors: string[]) {
+  constructor(
+    message: string,
+    public errors: string[],
+  ) {
     super(message);
-    this.name = 'PlanValidationError';
+    this.name = "PlanValidationError";
   }
 }
 
 export class CapabilityError extends Error {
-  constructor(message: string, public capability: string) {
+  constructor(
+    message: string,
+    public capability: string,
+  ) {
     super(message);
-    this.name = 'CapabilityError';
+    this.name = "CapabilityError";
   }
 }
 
 export class ReceiptError extends Error {
-  constructor(message: string, public receipt_id: string) {
+  constructor(
+    message: string,
+    public receipt_id: string,
+  ) {
     super(message);
-    this.name = 'ReceiptError';
+    this.name = "ReceiptError";
   }
 }
 
 export class ToolExecutionError extends Error {
-  constructor(message: string, public tool: string, public parameters: any) {
+  constructor(
+    message: string,
+    public tool: string,
+    public parameters: any,
+  ) {
     super(message);
-    this.name = 'ToolExecutionError';
+    this.name = "ToolExecutionError";
   }
 }
 
 // Constants
 export const SUPPORTED_JOURNEYS = [
-  'support_triage',
-  'expense_approval', 
-  'sales_outreach',
-  'hr_onboarding',
-  'dev_triage'
+  "support_triage",
+  "expense_approval",
+  "sales_outreach",
+  "hr_onboarding",
+  "dev_triage",
 ] as const;
 
 export const SUPPORTED_TOOLS = [
-  'slack',
-  'email', 
-  'calendar',
-  'notion',
-  'stripe',
-  'github',
-  'search',
-  'fetch'
+  "slack",
+  "email",
+  "calendar",
+  "notion",
+  "stripe",
+  "github",
+  "search",
+  "fetch",
 ] as const;
 
-export const CAPABILITY_SCOPES = [
-  'read',
-  'write',
-  'delete',
-  'admin'
-] as const;
+export const CAPABILITY_SCOPES = ["read", "write", "delete", "admin"] as const;
 
-export const RISK_LEVELS = [
-  'low',
-  'medium', 
-  'high',
-  'critical'
-] as const;
+export const RISK_LEVELS = ["low", "medium", "high", "critical"] as const;

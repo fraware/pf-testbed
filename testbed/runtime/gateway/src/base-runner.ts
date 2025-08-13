@@ -1,19 +1,19 @@
-import { 
-  AgentRunner, 
-  Plan, 
-  PlanStep, 
-  ToolCall, 
-  ToolResult, 
-  VerificationResult, 
-  AgentConfig, 
+import {
+  AgentRunner,
+  Plan,
+  PlanStep,
+  ToolCall,
+  ToolResult,
+  VerificationResult,
+  AgentConfig,
   AgentStatus,
   PlanValidationError,
   CapabilityError,
   ReceiptError,
   ToolExecutionError,
   SUPPORTED_JOURNEYS,
-  SUPPORTED_TOOLS
-} from './types';
+  SUPPORTED_TOOLS,
+} from "./types";
 
 /**
  * Base agent runner implementation that provides common functionality
@@ -23,7 +23,7 @@ export abstract class BaseAgentRunner implements AgentRunner {
   public name: string;
   public version: string;
   public capabilities: string[];
-  
+
   protected config: AgentConfig;
   protected startTime: number;
   protected activePlans: Set<string>;
@@ -63,13 +63,13 @@ export abstract class BaseAgentRunner implements AgentRunner {
       }
 
       // Validate tenant
-      if (!plan.tenant || !['acme', 'globex'].includes(plan.tenant)) {
+      if (!plan.tenant || !["acme", "globex"].includes(plan.tenant)) {
         errors.push(`Invalid tenant: ${plan.tenant}`);
       }
 
       // Validate plan structure
       if (!plan.id || !plan.steps || !Array.isArray(plan.steps)) {
-        errors.push('Invalid plan structure: missing id or steps');
+        errors.push("Invalid plan structure: missing id or steps");
       }
 
       // Validate steps
@@ -80,43 +80,52 @@ export abstract class BaseAgentRunner implements AgentRunner {
         }
 
         // Validate tool calls
-        if (step.type === 'tool_call') {
+        if (step.type === "tool_call") {
           if (!step.tool || !SUPPORTED_TOOLS.includes(step.tool as any)) {
             errors.push(`Unsupported tool in step ${step.id}: ${step.tool}`);
           }
-          
+
           if (!step.capability) {
             errors.push(`Missing capability in step ${step.id}`);
           }
         }
 
         // Validate receipts for retrieval steps
-        if (step.type === 'retrieval' && !step.receipt) {
+        if (step.type === "retrieval" && !step.receipt) {
           errors.push(`Missing receipt in retrieval step ${step.id}`);
         }
       }
 
       // Validate metadata
       if (!plan.metadata || !plan.metadata.agent || !plan.metadata.model) {
-        errors.push('Invalid metadata: missing agent or model information');
+        errors.push("Invalid metadata: missing agent or model information");
       }
 
       // Validate confidence and risk level
-      if (plan.metadata?.confidence && (plan.metadata.confidence < 0 || plan.metadata.confidence > 1)) {
-        errors.push('Invalid confidence: must be between 0 and 1');
+      if (
+        plan.metadata?.confidence &&
+        (plan.metadata.confidence < 0 || plan.metadata.confidence > 1)
+      ) {
+        errors.push("Invalid confidence: must be between 0 and 1");
       }
 
-      if (plan.metadata?.risk_level && !['low', 'medium', 'high', 'critical'].includes(plan.metadata.risk_level)) {
-        errors.push('Invalid risk level');
+      if (
+        plan.metadata?.risk_level &&
+        !["low", "medium", "high", "critical"].includes(
+          plan.metadata.risk_level,
+        )
+      ) {
+        errors.push("Invalid risk level");
       }
 
       // Validate expiration
       if (plan.expiresAt && new Date(plan.expiresAt) <= new Date()) {
-        errors.push('Plan has expired');
+        errors.push("Plan has expired");
       }
-
     } catch (error) {
-      errors.push(`Verification error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      errors.push(
+        `Verification error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
 
     return {
@@ -125,7 +134,7 @@ export abstract class BaseAgentRunner implements AgentRunner {
       errors,
       warnings,
       receipts,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -134,12 +143,15 @@ export abstract class BaseAgentRunner implements AgentRunner {
    */
   async executePlan(plan: Plan): Promise<Plan> {
     const startTime = Date.now();
-    
+
     try {
       // Verify plan first
       const verification = await this.verifyPlan(plan);
       if (!verification.valid) {
-        throw new PlanValidationError('Plan validation failed', verification.errors);
+        throw new PlanValidationError(
+          "Plan validation failed",
+          verification.errors,
+        );
       }
 
       // Track active plan
@@ -148,45 +160,48 @@ export abstract class BaseAgentRunner implements AgentRunner {
 
       // Execute steps sequentially
       for (const step of plan.steps) {
-        step.status = 'executing';
+        step.status = "executing";
         step.timestamp = new Date().toISOString();
 
         try {
-          if (step.type === 'tool_call') {
+          if (step.type === "tool_call") {
             const toolCall: ToolCall = {
               id: step.id,
               tool: step.tool!,
               parameters: step.parameters || {},
               capability: step.capability!,
               timestamp: step.timestamp,
-              tenant: plan.tenant
+              tenant: plan.tenant,
             };
 
             const result = await this.executeTool(toolCall);
             step.result = result.result;
-            step.status = 'completed';
+            step.status = "completed";
             step.duration = Date.now() - startTime;
-          } else if (step.type === 'decision') {
+          } else if (step.type === "decision") {
             // Handle decision steps (agent-specific logic)
-            step.status = 'completed';
+            step.status = "completed";
             step.duration = Date.now() - startTime;
-          } else if (step.type === 'retrieval') {
+          } else if (step.type === "retrieval") {
             // Validate receipt
             if (!step.receipt) {
-              throw new ReceiptError('Missing receipt for retrieval step', step.id);
+              throw new ReceiptError(
+                "Missing receipt for retrieval step",
+                step.id,
+              );
             }
-            step.status = 'completed';
+            step.status = "completed";
             step.duration = Date.now() - startTime;
-          } else if (step.type === 'verification') {
+          } else if (step.type === "verification") {
             // Handle verification steps
-            step.status = 'completed';
+            step.status = "completed";
             step.duration = Date.now() - startTime;
           }
         } catch (error) {
-          step.status = 'failed';
-          step.error = error instanceof Error ? error.message : 'Unknown error';
+          step.status = "failed";
+          step.error = error instanceof Error ? error.message : "Unknown error";
           step.duration = Date.now() - startTime;
-          
+
           // Log error but continue with other steps
           console.error(`Step ${step.id} failed:`, error);
         }
@@ -196,7 +211,6 @@ export abstract class BaseAgentRunner implements AgentRunner {
       this.lastHeartbeat = Date.now();
 
       return plan;
-
     } catch (error) {
       this.errorCount++;
       throw error;
@@ -219,8 +233,8 @@ export abstract class BaseAgentRunner implements AgentRunner {
       metadata: {
         runner: this.name,
         capabilities: this.capabilities,
-        config: this.config
-      }
+        config: this.config,
+      },
     };
   }
 
@@ -229,14 +243,14 @@ export abstract class BaseAgentRunner implements AgentRunner {
    */
   async configure(config: AgentConfig): Promise<void> {
     this.config = config;
-    
+
     // Validate configuration
     if (config.timeout <= 0) {
-      throw new Error('Timeout must be positive');
+      throw new Error("Timeout must be positive");
     }
-    
+
     if (config.max_retries < 0) {
-      throw new Error('Max retries must be non-negative');
+      throw new Error("Max retries must be non-negative");
     }
   }
 
@@ -246,7 +260,7 @@ export abstract class BaseAgentRunner implements AgentRunner {
   async getStatus(): Promise<AgentStatus> {
     const now = Date.now();
     const uptime = now - this.startTime;
-    
+
     return {
       healthy: this.activePlans.size < 100, // Simple health check
       version: this.version,
@@ -254,7 +268,8 @@ export abstract class BaseAgentRunner implements AgentRunner {
       last_heartbeat: new Date(this.lastHeartbeat).toISOString(),
       active_plans: this.activePlans.size,
       total_executions: this.executionCount,
-      error_rate: this.executionCount > 0 ? this.errorCount / this.executionCount : 0
+      error_rate:
+        this.executionCount > 0 ? this.errorCount / this.executionCount : 0,
     };
   }
 
@@ -263,7 +278,10 @@ export abstract class BaseAgentRunner implements AgentRunner {
    */
   protected validateCapability(required: string, available: string[]): void {
     if (!available.includes(required)) {
-      throw new CapabilityError(`Required capability not available: ${required}`, required);
+      throw new CapabilityError(
+        `Required capability not available: ${required}`,
+        required,
+      );
     }
   }
 
@@ -291,7 +309,7 @@ export abstract class BaseAgentRunner implements AgentRunner {
       tenant: plan.tenant,
       steps: plan.steps.length,
       agent: this.name,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 }

@@ -124,11 +124,13 @@ The gateway will start on the configured port with all agent stacks initialized.
 ### API Endpoints
 
 #### Health Check
+
 ```bash
 GET /health
 ```
 
 #### Execute Plan
+
 ```bash
 POST /execute/:stack
 Content-Type: application/json
@@ -150,22 +152,26 @@ Content-Type: application/json
 ```
 
 #### Get Metrics
+
 ```bash
 GET /metrics          # All stacks
 GET /metrics/:stack   # Specific stack
 ```
 
 #### Export Traces
+
 ```bash
 GET /traces/:journey/:tenant
 ```
 
 #### Configuration
+
 ```bash
 GET /config
 ```
 
 #### Observability
+
 ```bash
 GET /observability
 ```
@@ -173,48 +179,48 @@ GET /observability
 ### Example Plan Execution
 
 ```typescript
-import { UnifiedGateway } from './src/unified-gateway';
+import { UnifiedGateway } from "./src/unified-gateway";
 
 const gateway = new UnifiedGateway(config);
 
 const plan = {
-  id: 'support-plan-1',
-  tenant: 'acme',
-  journey: 'support_triage',
+  id: "support-plan-1",
+  tenant: "acme",
+  journey: "support_triage",
   steps: [
     {
-      id: 'step-1',
-      type: 'tool_call',
-      tool: 'slack',
-      parameters: { channel: 'support', message: 'New ticket created' },
-      capability: 'write',
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    }
+      id: "step-1",
+      type: "tool_call",
+      tool: "slack",
+      parameters: { channel: "support", message: "New ticket created" },
+      capability: "write",
+      status: "pending",
+      timestamp: new Date().toISOString(),
+    },
   ],
   metadata: {
-    version: '1.0.0',
-    agent: 'openai-assistants',
-    model: 'gpt-4',
+    version: "1.0.0",
+    agent: "openai-assistants",
+    model: "gpt-4",
     confidence: 0.9,
-    risk_level: 'low',
-    tags: ['support', 'automation'],
-    context: { priority: 'high' }
+    risk_level: "low",
+    tags: ["support", "automation"],
+    context: { priority: "high" },
   },
   timestamp: new Date().toISOString(),
-  expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 };
 
 const context = {
-  tenant: 'acme',
-  session_id: 'session-123',
-  request_id: 'req-456',
+  tenant: "acme",
+  session_id: "session-123",
+  request_id: "req-456",
   timestamp: new Date().toISOString(),
-  metadata: { user_id: 'user-789' }
+  metadata: { user_id: "user-789" },
 };
 
-const result = await gateway.executePlan('openai-assistants', plan, context);
-console.log('Execution result:', result);
+const result = await gateway.executePlan("openai-assistants", plan, context);
+console.log("Execution result:", result);
 ```
 
 ## Normalized Trace Export
@@ -259,21 +265,25 @@ Each tool call requires a valid capability token that matches the requested oper
 ## Testing
 
 ### Run All Tests
+
 ```bash
 npm test
 ```
 
 ### Run Specific Test Suite
+
 ```bash
 npm test -- --testNamePattern="Agent-Zoo Connectors"
 ```
 
 ### Test Coverage
+
 ```bash
 npm run test:coverage
 ```
 
 ### Performance Testing
+
 ```bash
 npm run test:perf
 ```
@@ -366,6 +376,7 @@ MIT License - see LICENSE file for details.
 ## Support
 
 For issues and questions:
+
 - Create an issue in the repository
 - Check the troubleshooting guide
 - Review the test suite for examples

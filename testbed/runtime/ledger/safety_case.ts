@@ -1,5 +1,5 @@
-import { Plan, AccessReceipt, ToolTrace } from '../gateway/src/types';
-import { LeanTheoremMapping } from '../gateway/src/observability';
+import { Plan, AccessReceipt, ToolTrace } from "../gateway/src/types";
+import { LeanTheoremMapping } from "../gateway/src/observability";
 
 // Safety case bundle components
 export interface SafetyCaseBundle {
@@ -9,7 +9,7 @@ export interface SafetyCaseBundle {
   journey: string;
   timestamp: string;
   expires_at: string;
-  
+
   // Core components
   capability_ids: string[];
   access_receipts: AccessReceipt[];
@@ -17,10 +17,10 @@ export interface SafetyCaseBundle {
   kernel_decision_log: KernelDecisionLog[];
   egress_certificate: EgressCertificate;
   attestation_quote: AttestationQuote;
-  
+
   // Metadata
   metadata: SafetyCaseMetadata;
-  verification_status: 'pending' | 'verified' | 'failed';
+  verification_status: "pending" | "verified" | "failed";
   verification_timestamp?: string;
   verification_errors?: string[];
 }
@@ -28,8 +28,12 @@ export interface SafetyCaseBundle {
 export interface KernelDecisionLog {
   id: string;
   timestamp: string;
-  decision_type: 'capability_check' | 'policy_enforcement' | 'risk_assessment' | 'access_grant';
-  decision: 'allow' | 'deny' | 'escalate';
+  decision_type:
+    | "capability_check"
+    | "policy_enforcement"
+    | "risk_assessment"
+    | "access_grant";
+  decision: "allow" | "deny" | "escalate";
   reason: string;
   context: Record<string, any>;
   evidence: string[];
@@ -60,7 +64,7 @@ export interface AttestationQuote {
 export interface SafetyCaseMetadata {
   version: string;
   created_by: string;
-  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  risk_level: "low" | "medium" | "high" | "critical";
   compliance_frameworks: string[];
   tags: string[];
   notes?: string;
@@ -79,7 +83,7 @@ export class SafetyCaseManager {
     plan: Plan,
     receipts: AccessReceipt[],
     traces: ToolTrace[],
-    theorems: LeanTheoremMapping[]
+    theorems: LeanTheoremMapping[],
   ): SafetyCaseBundle {
     const bundle: SafetyCaseBundle = {
       id: this.generateBundleId(),
@@ -87,25 +91,31 @@ export class SafetyCaseManager {
       tenant,
       journey,
       timestamp: new Date().toISOString(),
-      expires_at: new Date(Date.now() + this.retentionDays * 24 * 60 * 60 * 1000).toISOString(),
-      
+      expires_at: new Date(
+        Date.now() + this.retentionDays * 24 * 60 * 60 * 1000,
+      ).toISOString(),
+
       capability_ids: this.extractCapabilityIds(plan, receipts),
       access_receipts: receipts,
       plan_hash: this.generatePlanHash(plan),
       kernel_decision_log: this.generateKernelDecisionLog(plan, traces),
-      egress_certificate: this.generateEgressCertificate(session_id, tenant, plan),
+      egress_certificate: this.generateEgressCertificate(
+        session_id,
+        tenant,
+        plan,
+      ),
       attestation_quote: this.generateAttestationQuote(session_id),
-      
+
       metadata: {
-        version: '1.0.0',
-        created_by: 'system',
+        version: "1.0.0",
+        created_by: "system",
         risk_level: plan.metadata.risk_level,
-        compliance_frameworks: ['SOC2', 'ISO27001', 'GDPR'],
+        compliance_frameworks: ["SOC2", "ISO27001", "GDPR"],
         tags: [tenant, journey, plan.metadata.agent],
-        notes: `Safety case bundle for ${journey} journey in ${tenant}`
+        notes: `Safety case bundle for ${journey} journey in ${tenant}`,
       },
-      
-      verification_status: 'pending'
+
+      verification_status: "pending",
     };
 
     this.bundles.set(bundle.id, bundle);
@@ -120,14 +130,14 @@ export class SafetyCaseManager {
   // Get bundles by session
   getBundlesBySession(session_id: string): SafetyCaseBundle[] {
     return Array.from(this.bundles.values()).filter(
-      bundle => bundle.session_id === session_id
+      (bundle) => bundle.session_id === session_id,
     );
   }
 
   // Get bundles by tenant
   getBundlesByTenant(tenant: string): SafetyCaseBundle[] {
     return Array.from(this.bundles.values()).filter(
-      bundle => bundle.tenant === tenant
+      (bundle) => bundle.tenant === tenant,
     );
   }
 
@@ -138,7 +148,7 @@ export class SafetyCaseManager {
 
     try {
       // Verify all required components exist
-      const hasAllComponents = 
+      const hasAllComponents =
         bundle.capability_ids.length > 0 &&
         bundle.access_receipts.length > 0 &&
         bundle.plan_hash &&
@@ -147,40 +157,41 @@ export class SafetyCaseManager {
         bundle.attestation_quote;
 
       if (!hasAllComponents) {
-        bundle.verification_status = 'failed';
-        bundle.verification_errors = ['Missing required components'];
+        bundle.verification_status = "failed";
+        bundle.verification_errors = ["Missing required components"];
         return false;
       }
 
       // Verify receipts are valid
-      const receiptsValid = bundle.access_receipts.every(receipt => 
-        this.validateReceipt(receipt)
+      const receiptsValid = bundle.access_receipts.every((receipt) =>
+        this.validateReceipt(receipt),
       );
 
       if (!receiptsValid) {
-        bundle.verification_status = 'failed';
-        bundle.verification_errors = ['Invalid access receipts'];
+        bundle.verification_status = "failed";
+        bundle.verification_errors = ["Invalid access receipts"];
         return false;
       }
 
       // Verify certificates are not expired
-      const certificatesValid = 
+      const certificatesValid =
         new Date(bundle.egress_certificate.expires_at) > new Date() &&
-        new Date(bundle.attestation_quote.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000);
+        new Date(bundle.attestation_quote.timestamp) >
+          new Date(Date.now() - 24 * 60 * 60 * 1000);
 
       if (!certificatesValid) {
-        bundle.verification_status = 'failed';
-        bundle.verification_errors = ['Expired certificates'];
+        bundle.verification_status = "failed";
+        bundle.verification_errors = ["Expired certificates"];
         return false;
       }
 
-      bundle.verification_status = 'verified';
+      bundle.verification_status = "verified";
       bundle.verification_timestamp = new Date().toISOString();
       bundle.verification_errors = [];
-      
+
       return true;
     } catch (error) {
-      bundle.verification_status = 'failed';
+      bundle.verification_status = "failed";
       bundle.verification_errors = [`Verification error: ${error.message}`];
       return false;
     }
@@ -195,13 +206,15 @@ export class SafetyCaseManager {
 
     // Verify bundle before export
     if (!this.verifyBundle(bundle_id)) {
-      throw new Error(`Bundle verification failed: ${bundle.verification_errors?.join(', ')}`);
+      throw new Error(
+        `Bundle verification failed: ${bundle.verification_errors?.join(", ")}`,
+      );
     }
 
     // In a real implementation, you would use a ZIP library like JSZip
     // For now, we'll return a JSON representation
     const bundleData = JSON.stringify(bundle, null, 2);
-    return Buffer.from(bundleData, 'utf-8');
+    return Buffer.from(bundleData, "utf-8");
   }
 
   // Clean up expired bundles
@@ -232,10 +245,16 @@ export class SafetyCaseManager {
 
     return {
       total_bundles: bundles.length,
-      verified_bundles: bundles.filter(b => b.verification_status === 'verified').length,
-      failed_bundles: bundles.filter(b => b.verification_status === 'failed').length,
-      pending_bundles: bundles.filter(b => b.verification_status === 'pending').length,
-      expired_bundles: bundles.filter(b => new Date(b.expires_at) < now).length
+      verified_bundles: bundles.filter(
+        (b) => b.verification_status === "verified",
+      ).length,
+      failed_bundles: bundles.filter((b) => b.verification_status === "failed")
+        .length,
+      pending_bundles: bundles.filter(
+        (b) => b.verification_status === "pending",
+      ).length,
+      expired_bundles: bundles.filter((b) => new Date(b.expires_at) < now)
+        .length,
     };
   }
 
@@ -244,18 +263,21 @@ export class SafetyCaseManager {
     return `bundle_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private extractCapabilityIds(plan: Plan, receipts: AccessReceipt[]): string[] {
+  private extractCapabilityIds(
+    plan: Plan,
+    receipts: AccessReceipt[],
+  ): string[] {
     const capabilityIds = new Set<string>();
-    
+
     // Extract from plan steps
-    plan.steps.forEach(step => {
+    plan.steps.forEach((step) => {
       if (step.capability) {
         capabilityIds.add(step.capability);
       }
     });
 
     // Extract from receipts
-    receipts.forEach(receipt => {
+    receipts.forEach((receipt) => {
       // Parse capability from receipt if available
       if (receipt.query_hash) {
         // In a real implementation, you would decode the query hash to extract capabilities
@@ -271,14 +293,17 @@ export class SafetyCaseManager {
     const planContent = JSON.stringify({
       id: plan.id,
       steps: plan.steps,
-      metadata: plan.metadata
+      metadata: plan.metadata,
     });
-    
+
     // In a real implementation, use a proper hashing algorithm
-    return `hash_${Buffer.from(planContent).toString('base64').substring(0, 16)}`;
+    return `hash_${Buffer.from(planContent).toString("base64").substring(0, 16)}`;
   }
 
-  private generateKernelDecisionLog(plan: Plan, traces: ToolTrace[]): KernelDecisionLog[] {
+  private generateKernelDecisionLog(
+    plan: Plan,
+    traces: ToolTrace[],
+  ): KernelDecisionLog[] {
     const decisions: KernelDecisionLog[] = [];
 
     // Generate decisions based on plan execution
@@ -286,35 +311,42 @@ export class SafetyCaseManager {
       decisions.push({
         id: `decision_${step.id}`,
         timestamp: step.timestamp,
-        decision_type: 'capability_check',
-        decision: step.status === 'completed' ? 'allow' : 'deny',
-        reason: step.status === 'completed' ? 'Capability verified' : 'Capability check failed',
+        decision_type: "capability_check",
+        decision: step.status === "completed" ? "allow" : "deny",
+        reason:
+          step.status === "completed"
+            ? "Capability verified"
+            : "Capability check failed",
         context: {
           step_id: step.id,
           step_type: step.type,
           tool: step.tool,
-          parameters: step.parameters
+          parameters: step.parameters,
         },
         evidence: traces
-          .filter(trace => trace.tool_call_id === step.id)
-          .map(trace => trace.id)
+          .filter((trace) => trace.tool_call_id === step.id)
+          .map((trace) => trace.id),
       });
     });
 
     return decisions;
   }
 
-  private generateEgressCertificate(session_id: string, tenant: string, plan: Plan): EgressCertificate {
+  private generateEgressCertificate(
+    session_id: string,
+    tenant: string,
+    plan: Plan,
+  ): EgressCertificate {
     return {
       id: `cert_${session_id}`,
       tenant,
       session_id,
       timestamp: new Date().toISOString(),
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
-      permissions: plan.steps.map(step => step.type),
+      permissions: plan.steps.map((step) => step.type),
       restrictions: [`tenant:${tenant}`, `session:${session_id}`],
       signature: `sig_${Math.random().toString(36).substr(2, 16)}`,
-      issuer: 'testbed-kernel'
+      issuer: "testbed-kernel",
     };
   }
 
@@ -323,14 +355,14 @@ export class SafetyCaseManager {
       id: `attest_${session_id}`,
       session_id,
       timestamp: new Date().toISOString(),
-      platform: 'testbed-runtime',
+      platform: "testbed-runtime",
       measurements: {
-        'testbed_version': '1.0.0',
-        'session_id': session_id,
-        'timestamp': new Date().toISOString()
+        testbed_version: "1.0.0",
+        session_id: session_id,
+        timestamp: new Date().toISOString(),
       },
       signature: `attest_sig_${Math.random().toString(36).substr(2, 16)}`,
-      public_key: `pubkey_${Math.random().toString(36).substr(2, 16)}`
+      public_key: `pubkey_${Math.random().toString(36).substr(2, 16)}`,
     };
   }
 

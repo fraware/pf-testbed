@@ -10,26 +10,31 @@ Grafana dashboards and provisioning for the Provability Fabric testbed.
 ## Dashboards
 
 ### SLO Overview
+
 - Real-time SLO violation tracking
 - Performance metrics visualization
 - Alert status and history
 
 ### Latency Metrics
+
 - P95/P99 performance monitoring
 - Request duration histograms
 - Service dependency mapping
 
 ### Theorem Verification
+
 - Lean proof validation rates
 - Theorem execution metrics
 - Proof complexity analysis
 
 ### Active Traces
+
 - Tenant and journey breakdowns
 - Trace lifecycle monitoring
 - Performance correlation
 
 ### Security Alerts
+
 - Honeytoken and certificate status
 - Policy violation tracking
 - Threat detection metrics
@@ -37,6 +42,7 @@ Grafana dashboards and provisioning for the Provability Fabric testbed.
 ## Provisioning
 
 Automated setup of:
+
 - Data sources (Prometheus, etc.)
 - Dashboard imports
 - User and team management

@@ -1,19 +1,19 @@
-import { 
-  AgentRunner, 
-  Plan, 
-  PlanStep, 
-  ToolCall, 
-  ToolResult, 
-  VerificationResult, 
-  AgentConfig, 
+import {
+  AgentRunner,
+  Plan,
+  PlanStep,
+  ToolCall,
+  ToolResult,
+  VerificationResult,
+  AgentConfig,
   AgentStatus,
   ExecutionContext,
   ExecutionResult,
-  GatewayConfig
-} from './types';
-import { BaseAgentRunner } from './base-runner';
-import { MetricsCollector } from './metrics';
-import { ObservabilityCollector } from './observability';
+  GatewayConfig,
+} from "./types";
+import { BaseAgentRunner } from "./base-runner";
+import { MetricsCollector } from "./metrics";
+import { ObservabilityCollector } from "./observability";
 
 // Unified trace export schema
 export interface NormalizedTrace {
@@ -67,7 +67,7 @@ export class UnifiedGateway {
     this.config = config;
     this.metrics = new MetricsCollector();
     this.observability = new ObservabilityCollector();
-    this.enforceMode = process.env.PF_ENFORCE === 'true';
+    this.enforceMode = process.env.PF_ENFORCE === "true";
   }
 
   /**
@@ -82,18 +82,18 @@ export class UnifiedGateway {
    * Execute a plan using the specified agent stack
    */
   async executePlan(
-    stack: string, 
-    plan: Plan, 
-    context: ExecutionContext
+    stack: string,
+    plan: Plan,
+    context: ExecutionContext,
   ): Promise<ExecutionResult> {
     const startTime = Date.now();
-    
+
     if (!this.agents.has(stack)) {
       throw new Error(`Unsupported agent stack: ${stack}`);
     }
 
     const agent = this.agents.get(stack)!;
-    
+
     try {
       // Record execution start
       this.metrics.recordExecutionStart(stack, plan.journey, plan.tenant);
@@ -102,35 +102,54 @@ export class UnifiedGateway {
       // Verify plan
       const verification = await agent.verifyPlan(plan);
       if (!verification.valid) {
-        throw new Error(`Plan validation failed: ${verification.errors.join(', ')}`);
+        throw new Error(
+          `Plan validation failed: ${verification.errors.join(", ")}`,
+        );
       }
 
       // Execute plan
       const executedPlan = await agent.executePlan(plan);
-      
+
       // Record execution completion
       const executionTime = Date.now() - startTime;
-      this.metrics.recordExecutionComplete(stack, plan.journey, plan.tenant, executionTime);
+      this.metrics.recordExecutionComplete(
+        stack,
+        plan.journey,
+        plan.tenant,
+        executionTime,
+      );
       this.observability.recordPlanComplete(plan.id, executionTime);
 
       // Generate normalized trace
-      const trace = await this.generateNormalizedTrace(stack, executedPlan, context, executionTime);
+      const trace = await this.generateNormalizedTrace(
+        stack,
+        executedPlan,
+        context,
+        executionTime,
+      );
 
       return {
         success: true,
         plan_id: plan.id,
         execution_time: executionTime,
-        steps_completed: executedPlan.steps.filter(s => s.status === 'completed').length,
-        steps_failed: executedPlan.steps.filter(s => s.status === 'failed').length,
+        steps_completed: executedPlan.steps.filter(
+          (s) => s.status === "completed",
+        ).length,
+        steps_failed: executedPlan.steps.filter((s) => s.status === "failed")
+          .length,
         final_result: executedPlan,
         traces: [trace],
-        receipts: verification.receipts.map(r => r.id),
-        timestamp: new Date().toISOString()
+        receipts: verification.receipts.map((r) => r.id),
+        timestamp: new Date().toISOString(),
       };
-
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      this.metrics.recordExecutionError(stack, plan.journey, plan.tenant, error);
+      this.metrics.recordExecutionError(
+        stack,
+        plan.journey,
+        plan.tenant,
+        error,
+      );
       this.observability.recordPlanError(plan.id, error, executionTime);
 
       return {
@@ -139,10 +158,10 @@ export class UnifiedGateway {
         execution_time: executionTime,
         steps_completed: 0,
         steps_failed: plan.steps.length,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         traces: [],
         receipts: [],
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
   }
@@ -154,10 +173,10 @@ export class UnifiedGateway {
     stack: string,
     plan: Plan,
     context: ExecutionContext,
-    executionTime: number
+    executionTime: number,
   ): Promise<NormalizedTrace> {
     const stepDurations: Record<string, number> = {};
-    
+
     // Calculate step durations
     for (const step of plan.steps) {
       if (step.duration) {
@@ -173,7 +192,7 @@ export class UnifiedGateway {
       agent_stack: stack,
       journey: plan.journey,
       tenant: plan.tenant,
-      steps: plan.steps.map(step => ({
+      steps: plan.steps.map((step) => ({
         id: step.id,
         type: step.type,
         tool: step.tool,
@@ -182,43 +201,46 @@ export class UnifiedGateway {
         duration_ms: step.duration || 0,
         timestamp: step.timestamp,
         result: step.result,
-        error: step.error
+        error: step.error,
       })),
       receipts: plan.steps
-        .filter(s => s.type === 'retrieval' && s.receipt)
-        .map(s => s.receipt!),
+        .filter((s) => s.type === "retrieval" && s.receipt)
+        .map((s) => s.receipt!),
       cert_id: certId,
       timings: {
         plan_start: plan.timestamp,
         plan_end: new Date().toISOString(),
         total_duration_ms: executionTime,
-        step_durations: stepDurations
+        step_durations: stepDurations,
       },
       metadata: {
         model: plan.metadata.model,
         confidence: plan.metadata.confidence,
         risk_level: plan.metadata.risk_level,
         capabilities_used: plan.steps
-          .filter(s => s.capability)
-          .map(s => s.capability!),
+          .filter((s) => s.capability)
+          .map((s) => s.capability!),
         shadow_mode: !this.enforceMode,
-        enforce_policies: this.enforceMode
-      }
+        enforce_policies: this.enforceMode,
+      },
     };
   }
 
   /**
    * Generate unique capability token ID
    */
-  private generateCapabilityTokenId(plan: Plan, context: ExecutionContext): string {
+  private generateCapabilityTokenId(
+    plan: Plan,
+    context: ExecutionContext,
+  ): string {
     const components = [
       plan.tenant,
       plan.journey,
       context.session_id,
       plan.id,
-      Date.now().toString()
+      Date.now().toString(),
     ];
-    return btoa(components.join('|')).replace(/[^a-zA-Z0-9]/g, '');
+    return btoa(components.join("|")).replace(/[^a-zA-Z0-9]/g, "");
   }
 
   /**
@@ -226,25 +248,25 @@ export class UnifiedGateway {
    */
   async getStackMetrics(): Promise<Record<string, any>> {
     const metrics: Record<string, any> = {};
-    
+
     for (const [stack, agent] of this.agents) {
       try {
         const status = await agent.getStatus();
         const stackMetrics = this.metrics.getStackMetrics(stack);
-        
+
         metrics[stack] = {
           status,
           metrics: stackMetrics,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
       } catch (error) {
         metrics[stack] = {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
+          error: error instanceof Error ? error.message : "Unknown error",
+          timestamp: new Date().toISOString(),
         };
       }
     }
-    
+
     return metrics;
   }
 
@@ -253,7 +275,7 @@ export class UnifiedGateway {
    */
   async getHealthStatus(): Promise<Record<string, boolean>> {
     const health: Record<string, boolean> = {};
-    
+
     for (const [stack, agent] of this.agents) {
       try {
         const status = await agent.getStatus();
@@ -262,20 +284,23 @@ export class UnifiedGateway {
         health[stack] = false;
       }
     }
-    
+
     return health;
   }
 
   /**
    * Export all traces for a specific journey across all stacks
    */
-  async exportJourneyTraces(journey: string, tenant: string): Promise<NormalizedTrace[]> {
+  async exportJourneyTraces(
+    journey: string,
+    tenant: string,
+  ): Promise<NormalizedTrace[]> {
     const traces: NormalizedTrace[] = [];
-    
+
     // This would typically query a database or storage system
     // For now, we'll return an empty array
     // In production, this would aggregate traces from all stacks
-    
+
     return traces;
   }
 

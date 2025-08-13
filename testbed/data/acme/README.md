@@ -10,6 +10,7 @@ Tenant data structure for ACME Corporation, a fictional technology company.
 ## Knowledge Base
 
 The knowledge base contains:
+
 - Product documentation
 - Support articles
 - Company policies
@@ -19,6 +20,7 @@ The knowledge base contains:
 ## Seed Data
 
 Seed data includes:
+
 - Sample user accounts
 - Test tickets and cases
 - Mock expense reports
@@ -35,17 +37,17 @@ Seed data includes:
 ## Usage
 
 ```typescript
-import { ACMEDataStore } from './acme-store';
+import { ACMEDataStore } from "./acme-store";
 
 const store = new ACMEDataStore({
-  tenant: 'acme',
-  isolation: 'strict',
-  audit: true
+  tenant: "acme",
+  isolation: "strict",
+  audit: true,
 });
 
 // Access is automatically logged and receipted
 const data = await store.query({
-  table: 'support_tickets',
-  filters: { status: 'open' }
+  table: "support_tickets",
+  filters: { status: "open" },
 });
 ```

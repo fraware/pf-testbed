@@ -1,4 +1,4 @@
-import { Plan, PlanStep, ToolTrace, AccessReceipt } from './types';
+import { Plan, PlanStep, ToolTrace, AccessReceipt } from "./types";
 
 // Enhanced trace linking for Lean theorem integration
 export interface LeanTheoremMapping {
@@ -7,7 +7,7 @@ export interface LeanTheoremMapping {
   spec_file: string;
   spec_line: number;
   confidence: number;
-  verification_status: 'verified' | 'pending' | 'failed';
+  verification_status: "verified" | "pending" | "failed";
   last_verified: string;
 }
 
@@ -67,7 +67,7 @@ export interface ViewLayout {
 
 export interface PanelConfig {
   id: string;
-  type: 'metrics' | 'traces' | 'theorems' | 'alerts';
+  type: "metrics" | "traces" | "theorems" | "alerts";
   position: {
     x: number;
     y: number;
@@ -88,7 +88,7 @@ export class ObservabilityService {
     error_rate: 0,
     success_rate: 0,
     active_traces: 0,
-    theorem_verification_rate: 0
+    theorem_verification_rate: 0,
   };
 
   // Create new trace context with Lean theorem linking
@@ -96,10 +96,10 @@ export class ObservabilityService {
     plan: Plan,
     request_id: string,
     session_id: string,
-    user_id?: string
+    user_id?: string,
   ): TraceContext {
     const trace_id = this.generateTraceId();
-    
+
     const context: TraceContext = {
       trace_id,
       plan_id: plan.id,
@@ -115,13 +115,13 @@ export class ObservabilityService {
         agent: plan.metadata.agent,
         model: plan.metadata.model,
         confidence: plan.metadata.confidence,
-        risk_level: plan.metadata.risk_level
-      }
+        risk_level: plan.metadata.risk_level,
+      },
     };
 
     this.traceContexts.set(trace_id, context);
     this.updateMetrics();
-    
+
     return context;
   }
 
@@ -129,7 +129,7 @@ export class ObservabilityService {
   linkLeanTheorem(
     trace_id: string,
     theorem: LeanTheoremMapping,
-    spec_lines: string[]
+    spec_lines: string[],
   ): void {
     const context = this.traceContexts.get(trace_id);
     if (!context) {
@@ -138,19 +138,24 @@ export class ObservabilityService {
 
     context.lean_theorems.push(theorem);
     context.spec_lines.push(...spec_lines);
-    
+
     // Update verification status
     this.updateTheoremVerificationStatus(trace_id, theorem.theorem_id);
   }
 
   // Update theorem verification status
-  private updateTheoremVerificationStatus(trace_id: string, theorem_id: string): void {
+  private updateTheoremVerificationStatus(
+    trace_id: string,
+    theorem_id: string,
+  ): void {
     const context = this.traceContexts.get(trace_id);
     if (!context) return;
 
-    const theorem = context.lean_theorems.find(t => t.theorem_id === theorem_id);
+    const theorem = context.lean_theorems.find(
+      (t) => t.theorem_id === theorem_id,
+    );
     if (theorem) {
-      theorem.verification_status = 'verified';
+      theorem.verification_status = "verified";
       theorem.last_verified = new Date().toISOString();
     }
   }
@@ -175,20 +180,22 @@ export class ObservabilityService {
       trace: context,
       plan: {} as Plan, // Would be fetched from plan store
       theorems: context.lean_theorems,
-      certificates: [] // Would be fetched from cert store
+      certificates: [], // Would be fetched from cert store
     };
   }
 
   // Save view for specific journey and tenant
-  saveView(view: Omit<SavedView, 'id' | 'created_at' | 'updated_at'>): SavedView {
+  saveView(
+    view: Omit<SavedView, "id" | "created_at" | "updated_at">,
+  ): SavedView {
     const id = this.generateViewId();
     const now = new Date().toISOString();
-    
+
     const savedView: SavedView = {
       ...view,
       id,
       created_at: now,
-      updated_at: now
+      updated_at: now,
     };
 
     this.savedViews.set(id, savedView);
@@ -198,26 +205,30 @@ export class ObservabilityService {
   // Get saved views for tenant and journey
   getSavedViews(tenant: string, journey: string): SavedView[] {
     return Array.from(this.savedViews.values()).filter(
-      view => view.tenant === tenant && view.journey === journey
+      (view) => view.tenant === tenant && view.journey === journey,
     );
   }
 
   // Update metrics
   private updateMetrics(): void {
     this.metrics.active_traces = this.traceContexts.size;
-    
+
     // Calculate other metrics based on trace data
     const traces = Array.from(this.traceContexts.values());
     const verifiedTheorems = traces.reduce(
-      (count, trace) => count + trace.lean_theorems.filter(t => t.verification_status === 'verified').length,
-      0
+      (count, trace) =>
+        count +
+        trace.lean_theorems.filter((t) => t.verification_status === "verified")
+          .length,
+      0,
     );
     const totalTheorems = traces.reduce(
       (count, trace) => count + trace.lean_theorems.length,
-      0
+      0,
     );
-    
-    this.metrics.theorem_verification_rate = totalTheorems > 0 ? verifiedTheorems / totalTheorems : 0;
+
+    this.metrics.theorem_verification_rate =
+      totalTheorems > 0 ? verifiedTheorems / totalTheorems : 0;
   }
 
   // Get current metrics
@@ -235,7 +246,7 @@ export class ObservabilityService {
         this.traceContexts.delete(trace_id);
       }
     }
-    
+
     this.updateMetrics();
   }
 

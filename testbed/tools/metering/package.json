@@ -1,0 +1,48 @@
+{
+  "name": "pf-metering-tools",
+  "version": "1.0.0",
+  "description": "Provability Fabric Testbed Metering & Billing Tools",
+  "main": "metering-cli.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node metering-cli.ts",
+    "generate-invoice": "ts-node metering-cli.ts generate-invoice",
+    "usage": "ts-node metering-cli.ts usage",
+    "invoices": "ts-node metering-cli.ts invoices",
+    "export-metrics": "ts-node metering-cli.ts export-metrics",
+    "tiers": "ts-node metering-cli.ts tiers",
+    "simulate": "ts-node metering-cli.ts simulate-usage",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "lint-fix": "eslint . --ext .ts --fix"
+  },
+  "keywords": [
+    "metering",
+    "billing",
+    "usage-tracking",
+    "stripe",
+    "provability-fabric",
+    "testbed"
+  ],
+  "author": "Provability Fabric Contributors",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "pf-metering": "./metering-cli.ts"
+  }
+}

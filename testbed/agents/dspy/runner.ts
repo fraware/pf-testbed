@@ -1,5 +1,10 @@
-import { BaseAgentRunner } from '../../runtime/gateway/src/base-runner';
-import { Plan, ToolCall, ToolResult, AgentConfig } from '../../runtime/gateway/src/types';
+import { BaseAgentRunner } from "../../runtime/gateway/src/base-runner";
+import {
+  Plan,
+  ToolCall,
+  ToolResult,
+  AgentConfig,
+} from "../../runtime/gateway/src/types";
 
 /**
  * DSPy Agent Runner
@@ -11,8 +16,15 @@ export class DSPyRunner extends BaseAgentRunner {
   private tools: any[];
 
   constructor() {
-    super('dspy', '1.0.0', [
-      'slack', 'email', 'calendar', 'notion', 'stripe', 'github', 'search', 'fetch'
+    super("dspy", "1.0.0", [
+      "slack",
+      "email",
+      "calendar",
+      "notion",
+      "stripe",
+      "github",
+      "search",
+      "fetch",
     ]);
   }
 
@@ -21,30 +33,32 @@ export class DSPyRunner extends BaseAgentRunner {
    */
   async configure(config: AgentConfig): Promise<void> {
     await super.configure(config);
-    
+
     // Initialize DSPy
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       // Node.js environment
       try {
-        const { Predict, ChainOfThought, ReAct } = await import('dspy-ai');
-        const { OpenAI } = await import('dspy-ai/backends/openai');
-        
+        const { Predict, ChainOfThought, ReAct } = await import("dspy-ai");
+        const { OpenAI } = await import("dspy-ai/backends/openai");
+
         this.dspy = {
           Predict,
           ChainOfThought,
           ReAct,
-          OpenAI
+          OpenAI,
         };
       } catch (error) {
-        throw new Error(`Failed to import DSPy: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(
+          `Failed to import DSPy: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
       }
     } else {
-      throw new Error('DSPy runner requires Node.js environment');
+      throw new Error("DSPy runner requires Node.js environment");
     }
 
     // Initialize tools
     this.tools = this.createTools();
-    
+
     // Initialize agent
     await this.initializeAgent(config);
   }
@@ -55,7 +69,7 @@ export class DSPyRunner extends BaseAgentRunner {
   async plan(json: any): Promise<Plan> {
     try {
       if (!this.agent) {
-        throw new Error('Agent not initialized');
+        throw new Error("Agent not initialized");
       }
 
       // Create input for DSPy
@@ -63,7 +77,7 @@ export class DSPyRunner extends BaseAgentRunner {
         journey: json.journey,
         tenant: json.tenant,
         context: json.context || {},
-        requirements: json.requirements || []
+        requirements: json.requirements || [],
       };
 
       // Execute the DSPy agent
@@ -73,9 +87,10 @@ export class DSPyRunner extends BaseAgentRunner {
       const plan = this.parseResultToPlan(result, json);
 
       return plan;
-
     } catch (error) {
-      throw new Error(`Failed to create plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create plan: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -93,28 +108,28 @@ export class DSPyRunner extends BaseAgentRunner {
       let error: string | undefined;
 
       switch (call.tool) {
-        case 'slack':
+        case "slack":
           result = await this.executeSlackTool(call.parameters);
           break;
-        case 'email':
+        case "email":
           result = await this.executeEmailTool(call.parameters);
           break;
-        case 'calendar':
+        case "calendar":
           result = await this.executeCalendarTool(call.parameters);
           break;
-        case 'notion':
+        case "notion":
           result = await this.executeNotionTool(call.parameters);
           break;
-        case 'stripe':
+        case "stripe":
           result = await this.executeStripeTool(call.parameters);
           break;
-        case 'github':
+        case "github":
           result = await this.executeGitHubTool(call.parameters);
           break;
-        case 'search':
+        case "search":
           result = await this.executeSearchTool(call.parameters);
           break;
-        case 'fetch':
+        case "fetch":
           result = await this.executeFetchTool(call.parameters);
           break;
         default:
@@ -135,19 +150,18 @@ export class DSPyRunner extends BaseAgentRunner {
           metadata: {
             tool: call.tool,
             tenant: call.tenant,
-            timestamp: call.timestamp
+            timestamp: call.timestamp,
           },
-          replayable: true
+          replayable: true,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-
     } catch (error) {
       return {
         id: call.id,
         success: false,
         result: undefined,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         capability_consumed: call.capability,
         trace: {
           id: this.generateId(),
@@ -158,11 +172,11 @@ export class DSPyRunner extends BaseAgentRunner {
             tool: call.tool,
             tenant: call.tenant,
             timestamp: call.timestamp,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : "Unknown error",
           },
-          replayable: false
+          replayable: false,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
   }
@@ -175,8 +189,8 @@ export class DSPyRunner extends BaseAgentRunner {
       // Create LLM backend
       const llm = new this.dspy.OpenAI({
         api_key: config.api_key,
-        model: config.model || 'gpt-4',
-        max_tokens: 4000
+        model: config.model || "gpt-4",
+        max_tokens: 4000,
       });
 
       // Create DSPy predictor
@@ -195,17 +209,18 @@ export class DSPyRunner extends BaseAgentRunner {
         - metadata: Plan metadata including confidence and risk level
         - timestamp: When the plan was created
         - expiresAt: When the plan expires`,
-        backend: llm
+        backend: llm,
       });
 
       // Create the agent using ChainOfThought for reasoning
       this.agent = new this.dspy.ChainOfThought({
         predictor,
-        max_iters: 3
+        max_iters: 3,
       });
-
     } catch (error) {
-      throw new Error(`Failed to initialize DSPy agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to initialize DSPy agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -217,144 +232,167 @@ export class DSPyRunner extends BaseAgentRunner {
 
     // Slack tool
     tools.push({
-      name: 'slack',
-      description: 'Send Slack messages',
+      name: "slack",
+      description: "Send Slack messages",
       schema: {
-        type: 'object',
+        type: "object",
         properties: {
-          channel: { type: 'string', description: 'Slack channel' },
-          message: { type: 'string', description: 'Message to send' }
+          channel: { type: "string", description: "Slack channel" },
+          message: { type: "string", description: "Message to send" },
         },
-        required: ['channel', 'message']
+        required: ["channel", "message"],
       },
       execute: async (params: any) => {
         return await this.executeSlackTool(params);
-      }
+      },
     });
 
     // Email tool
     tools.push({
-      name: 'email',
-      description: 'Send emails',
+      name: "email",
+      description: "Send emails",
       schema: {
-        type: 'object',
+        type: "object",
         properties: {
-          to: { type: 'string', description: 'Recipient email' },
-          subject: { type: 'string', description: 'Email subject' },
-          body: { type: 'string', description: 'Email body' }
+          to: { type: "string", description: "Recipient email" },
+          subject: { type: "string", description: "Email subject" },
+          body: { type: "string", description: "Email body" },
         },
-        required: ['to', 'subject', 'body']
+        required: ["to", "subject", "body"],
       },
       execute: async (params: any) => {
         return await this.executeEmailTool(params);
-      }
+      },
     });
 
     // Calendar tool
     tools.push({
-      name: 'calendar',
-      description: 'Manage calendar events',
+      name: "calendar",
+      description: "Manage calendar events",
       schema: {
-        type: 'object',
+        type: "object",
         properties: {
-          action: { type: 'string', enum: ['create', 'update', 'delete'], description: 'Action to perform' },
-          title: { type: 'string', description: 'Event title' },
-          start: { type: 'string', description: 'Start time' },
-          end: { type: 'string', description: 'End time' }
+          action: {
+            type: "string",
+            enum: ["create", "update", "delete"],
+            description: "Action to perform",
+          },
+          title: { type: "string", description: "Event title" },
+          start: { type: "string", description: "Start time" },
+          end: { type: "string", description: "End time" },
         },
-        required: ['action', 'title']
+        required: ["action", "title"],
       },
       execute: async (params: any) => {
         return await this.executeCalendarTool(params);
-      }
+      },
     });
 
     // Notion tool
     tools.push({
-      name: 'notion',
-      description: 'Manage Notion pages',
+      name: "notion",
+      description: "Manage Notion pages",
       schema: {
-        type: 'object',
+        type: "object",
         properties: {
-          action: { type: 'string', enum: ['create', 'update', 'delete'], description: 'Action to perform' },
-          title: { type: 'string', description: 'Page title' },
-          content: { type: 'string', description: 'Page content' }
+          action: {
+            type: "string",
+            enum: ["create", "update", "delete"],
+            description: "Action to perform",
+          },
+          title: { type: "string", description: "Page title" },
+          content: { type: "string", description: "Page content" },
         },
-        required: ['action', 'title']
+        required: ["action", "title"],
       },
       execute: async (params: any) => {
         return await this.executeNotionTool(params);
-      }
+      },
     });
 
     // Stripe tool
     tools.push({
-      name: 'stripe',
-      description: 'Process payments',
+      name: "stripe",
+      description: "Process payments",
       schema: {
-        type: 'object',
+        type: "object",
         properties: {
-          action: { type: 'string', enum: ['charge', 'refund'], description: 'Action to perform' },
-          amount: { type: 'number', description: 'Amount in cents' },
-          currency: { type: 'string', description: 'Currency code' }
+          action: {
+            type: "string",
+            enum: ["charge", "refund"],
+            description: "Action to perform",
+          },
+          amount: { type: "number", description: "Amount in cents" },
+          currency: { type: "string", description: "Currency code" },
         },
-        required: ['action', 'amount']
+        required: ["action", "amount"],
       },
       execute: async (params: any) => {
         return await this.executeStripeTool(params);
-      }
+      },
     });
 
     // GitHub tool
     tools.push({
-      name: 'github',
-      description: 'Manage GitHub repositories',
+      name: "github",
+      description: "Manage GitHub repositories",
       schema: {
-        type: 'object',
+        type: "object",
         properties: {
-          action: { type: 'string', enum: ['create_issue', 'create_pr'], description: 'Action to perform' },
-          repo: { type: 'string', description: 'Repository name' },
-          title: { type: 'string', description: 'Issue/PR title' }
+          action: {
+            type: "string",
+            enum: ["create_issue", "create_pr"],
+            description: "Action to perform",
+          },
+          repo: { type: "string", description: "Repository name" },
+          title: { type: "string", description: "Issue/PR title" },
         },
-        required: ['action', 'repo', 'title']
+        required: ["action", "repo", "title"],
       },
       execute: async (params: any) => {
         return await this.executeGitHubTool(params);
-      }
+      },
     });
 
     // Search tool
     tools.push({
-      name: 'search',
-      description: 'Search the web',
+      name: "search",
+      description: "Search the web",
       schema: {
-        type: 'object',
+        type: "object",
         properties: {
-          query: { type: 'string', description: 'Search query' },
-          max_results: { type: 'number', description: 'Maximum number of results' }
+          query: { type: "string", description: "Search query" },
+          max_results: {
+            type: "number",
+            description: "Maximum number of results",
+          },
         },
-        required: ['query']
+        required: ["query"],
       },
       execute: async (params: any) => {
         return await this.executeSearchTool(params);
-      }
+      },
     });
 
     // Fetch tool
     tools.push({
-      name: 'fetch',
-      description: 'Fetch data from APIs',
+      name: "fetch",
+      description: "Fetch data from APIs",
       schema: {
-        type: 'object',
+        type: "object",
         properties: {
-          url: { type: 'string', description: 'URL to fetch' },
-          method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP method' }
+          url: { type: "string", description: "URL to fetch" },
+          method: {
+            type: "string",
+            enum: ["GET", "POST", "PUT", "DELETE"],
+            description: "HTTP method",
+          },
         },
-        required: ['url']
+        required: ["url"],
       },
       execute: async (params: any) => {
         return await this.executeFetchTool(params);
-      }
+      },
     });
 
     return tools;
@@ -367,13 +405,13 @@ export class DSPyRunner extends BaseAgentRunner {
     try {
       // Extract plan data from DSPy result
       let planData: any;
-      
+
       if (result.plan) {
         planData = result.plan;
       } else if (result.steps) {
         planData = {
           steps: result.steps,
-          metadata: result.metadata || {}
+          metadata: result.metadata || {},
         };
       } else {
         // Try to parse the entire result
@@ -383,20 +421,23 @@ export class DSPyRunner extends BaseAgentRunner {
       // Ensure required fields
       if (!planData.id) planData.id = this.generateId();
       if (!planData.timestamp) planData.timestamp = new Date().toISOString();
-      if (!planData.expiresAt) planData.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      if (!planData.expiresAt)
+        planData.expiresAt = new Date(
+          Date.now() + 24 * 60 * 60 * 1000,
+        ).toISOString();
 
       // Validate and normalize steps
       if (planData.steps && Array.isArray(planData.steps)) {
         planData.steps = planData.steps.map((step: any) => ({
           id: step.id || this.generateId(),
-          type: step.type || 'tool_call',
+          type: step.type || "tool_call",
           tool: step.tool,
           parameters: step.parameters || {},
-          capability: step.capability || 'read',
-          status: step.status || 'pending',
+          capability: step.capability || "read",
+          status: step.status || "pending",
           timestamp: step.timestamp || new Date().toISOString(),
           result: step.result,
-          error: step.error
+          error: step.error,
         }));
       } else {
         planData.steps = [];
@@ -404,34 +445,35 @@ export class DSPyRunner extends BaseAgentRunner {
 
       // Ensure metadata
       if (!planData.metadata) planData.metadata = {};
-      if (!planData.metadata.version) planData.metadata.version = '1.0.0';
+      if (!planData.metadata.version) planData.metadata.version = "1.0.0";
       if (!planData.metadata.agent) planData.metadata.agent = this.name;
-      if (!planData.metadata.model) planData.metadata.model = this.config?.model || 'gpt-4';
+      if (!planData.metadata.model)
+        planData.metadata.model = this.config?.model || "gpt-4";
       if (!planData.metadata.confidence) planData.metadata.confidence = 0.8;
-      if (!planData.metadata.risk_level) planData.metadata.risk_level = 'medium';
+      if (!planData.metadata.risk_level)
+        planData.metadata.risk_level = "medium";
       if (!planData.metadata.tags) planData.metadata.tags = [];
       if (!planData.metadata.context) planData.metadata.context = originalJson;
 
       return planData as Plan;
-
     } catch (error) {
       // Fallback to basic plan structure
       return {
         id: this.generateId(),
-        tenant: originalJson.tenant || 'acme',
-        journey: originalJson.journey || 'support_triage',
+        tenant: originalJson.tenant || "acme",
+        journey: originalJson.journey || "support_triage",
         steps: [],
         metadata: {
-          version: '1.0.0',
+          version: "1.0.0",
           agent: this.name,
-          model: this.config?.model || 'gpt-4',
+          model: this.config?.model || "gpt-4",
           confidence: 0.5,
-          risk_level: 'medium',
+          risk_level: "medium",
           tags: [],
-          context: originalJson
+          context: originalJson,
         },
         timestamp: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       };
     }
   }
@@ -439,41 +481,41 @@ export class DSPyRunner extends BaseAgentRunner {
   // Tool execution methods (implemented as stubs for now)
   private async executeSlackTool(params: any): Promise<any> {
     // Implement Slack tool execution
-    return { message: 'Slack message sent', params };
+    return { message: "Slack message sent", params };
   }
 
   private async executeEmailTool(params: any): Promise<any> {
     // Implement email tool execution
-    return { message: 'Email sent', params };
+    return { message: "Email sent", params };
   }
 
   private async executeCalendarTool(params: any): Promise<any> {
     // Implement calendar tool execution
-    return { event: 'Calendar event created', params };
+    return { event: "Calendar event created", params };
   }
 
   private async executeNotionTool(params: any): Promise<any> {
     // Implement Notion tool execution
-    return { page: 'Notion page updated', params };
+    return { page: "Notion page updated", params };
   }
 
   private async executeStripeTool(params: any): Promise<any> {
     // Implement Stripe tool execution
-    return { payment: 'Payment processed', params };
+    return { payment: "Payment processed", params };
   }
 
   private async executeGitHubTool(params: any): Promise<any> {
     // Implement GitHub tool execution
-    return { repo: 'GitHub action completed', params };
+    return { repo: "GitHub action completed", params };
   }
 
   private async executeSearchTool(params: any): Promise<any> {
     // Implement search tool execution
-    return { results: 'Search completed', params };
+    return { results: "Search completed", params };
   }
 
   private async executeFetchTool(params: any): Promise<any> {
     // Implement fetch tool execution
-    return { data: 'Data fetched', params };
+    return { data: "Data fetched", params };
   }
 }

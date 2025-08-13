@@ -90,7 +90,9 @@
     }
   },
   "commitlint": {
-    "extends": ["@commitlint/config-conventional"]
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
   },
   "jest": {
     "preset": "ts-jest",
@@ -109,7 +111,9 @@
         "statements": 90
       }
     },
-    "setupFilesAfterEnv": ["<rootDir>/tests/setup.ts"]
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.ts"
+    ]
   },
   "eslintConfig": {
     "extends": [
@@ -117,7 +121,9 @@
       "eslint:recommended"
     ],
     "parser": "@typescript-eslint/parser",
-    "plugins": ["@typescript-eslint"],
+    "plugins": [
+      "@typescript-eslint"
+    ],
     "rules": {
       "@typescript-eslint/no-unused-vars": "error",
       "@typescript-eslint/explicit-function-return-type": "warn",
@@ -130,7 +136,9 @@
     "compilerOptions": {
       "target": "ES2020",
       "module": "commonjs",
-      "lib": ["ES2020"],
+      "lib": [
+        "ES2020"
+      ],
       "outDir": "./dist",
       "rootDir": "./src",
       "strict": true,

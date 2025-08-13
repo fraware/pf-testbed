@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { createHmac, randomBytes } from 'crypto';
+import { Request, Response, NextFunction } from "express";
+import { z } from "zod";
+import { createHmac, randomBytes } from "crypto";
 
 // Validation schemas
 export const PfSignatureSchema = z.object({
@@ -9,7 +9,7 @@ export const PfSignatureSchema = z.object({
   capabilities: z.array(z.string()).min(1),
   nonce: z.string().min(16),
   expires_at: z.string().datetime(),
-  signature: z.string().min(1)
+  signature: z.string().min(1),
 });
 
 export const AccessReceiptSchema = z.object({
@@ -20,12 +20,12 @@ export const AccessReceiptSchema = z.object({
   result_hash: z.string().min(1),
   nonce: z.string().min(16),
   expires_at: z.string().datetime(),
-  signature: z.string().min(1)
+  signature: z.string().min(1),
 });
 
 export const RequestValidationSchema = z.object({
   pf_signature: PfSignatureSchema,
-  access_receipts: z.array(AccessReceiptSchema).optional()
+  access_receipts: z.array(AccessReceiptSchema).optional(),
 });
 
 // Error response types
@@ -36,65 +36,99 @@ export interface ValidationError {
 }
 
 export const VALIDATION_ERROR_CODES = {
-  PF_SIG_INVALID: 'PF_SIG_INVALID',
-  PF_SIG_EXPIRED: 'PF_SIG_EXPIRED',
-  PF_SIG_MISSING: 'PF_SIG_MISSING',
-  ACCESS_RECEIPT_INVALID: 'ACCESS_RECEIPT_INVALID',
-  ACCESS_RECEIPT_EXPIRED: 'ACCESS_RECEIPT_EXPIRED',
-  ACCESS_RECEIPT_MISSING: 'ACCESS_RECEIPT_MISSING',
-  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
-  TENANT_NOT_FOUND: 'TENANT_NOT_FOUND'
+  PF_SIG_INVALID: "PF_SIG_INVALID",
+  PF_SIG_EXPIRED: "PF_SIG_EXPIRED",
+  PF_SIG_MISSING: "PF_SIG_MISSING",
+  ACCESS_RECEIPT_INVALID: "ACCESS_RECEIPT_INVALID",
+  ACCESS_RECEIPT_EXPIRED: "ACCESS_RECEIPT_EXPIRED",
+  ACCESS_RECEIPT_MISSING: "ACCESS_RECEIPT_MISSING",
+  RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
+  TENANT_NOT_FOUND: "TENANT_NOT_FOUND",
 } as const;
 
 // Validation middleware class
 export class ValidationMiddleware {
   private readonly secretKey: string;
-  private readonly algorithm = 'sha256';
+  private readonly algorithm = "sha256";
 
   constructor(secretKey: string) {
     this.secretKey = secretKey;
   }
 
   // Main validation middleware
-  public validateRequest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public validateRequest = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       // Ensure request ID is set
-      if (!res.locals['requestId']) {
-        res.locals['requestId'] = req.headers['x-request-id'] as string || 'unknown';
+      if (!res.locals["requestId"]) {
+        res.locals["requestId"] =
+          (req.headers["x-request-id"] as string) || "unknown";
       }
-      
+
       // Extract and validate PF signature
-      const pfSignature = req.headers['x-pf-signature'] as string;
+      const pfSignature = req.headers["x-pf-signature"] as string;
       if (!pfSignature) {
-        this.sendError(res, 403, VALIDATION_ERROR_CODES.PF_SIG_MISSING, 'PF signature is required');
+        this.sendError(
+          res,
+          403,
+          VALIDATION_ERROR_CODES.PF_SIG_MISSING,
+          "PF signature is required",
+        );
         return;
       }
 
       // Parse and validate PF signature
       const parsedSignature = this.parseAndValidatePfSignature(pfSignature);
       if (!parsedSignature.success) {
-        this.sendError(res, 403, VALIDATION_ERROR_CODES.PF_SIG_INVALID, parsedSignature.error || 'Unknown error');
+        this.sendError(
+          res,
+          403,
+          VALIDATION_ERROR_CODES.PF_SIG_INVALID,
+          parsedSignature.error || "Unknown error",
+        );
         return;
       }
 
       // Check if signature is expired
       if (this.isSignatureExpired(parsedSignature.data.expires_at)) {
-        this.sendError(res, 403, VALIDATION_ERROR_CODES.PF_SIG_EXPIRED, 'PF signature has expired');
+        this.sendError(
+          res,
+          403,
+          VALIDATION_ERROR_CODES.PF_SIG_EXPIRED,
+          "PF signature has expired",
+        );
         return;
       }
 
       // Verify signature authenticity
       if (!this.verifySignature(parsedSignature.data)) {
-        this.sendError(res, 403, VALIDATION_ERROR_CODES.PF_SIG_INVALID, 'Invalid signature');
+        this.sendError(
+          res,
+          403,
+          VALIDATION_ERROR_CODES.PF_SIG_INVALID,
+          "Invalid signature",
+        );
         return;
       }
 
       // Validate access receipts if present
-      const accessReceipts = req.headers['x-access-receipts'] as string;
+      const accessReceipts = req.headers["x-access-receipts"] as string;
       if (accessReceipts) {
-        const receiptsValidation = this.validateAccessReceipts(accessReceipts, parsedSignature.data.tenant);
+        const receiptsValidation = this.validateAccessReceipts(
+          accessReceipts,
+          parsedSignature.data.tenant,
+        );
         if (!receiptsValidation.success) {
-          this.sendError(res, 403, receiptsValidation.errorCode || VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID, receiptsValidation.error || 'Unknown error');
+          this.sendError(
+            res,
+            403,
+            receiptsValidation.errorCode ||
+              VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID,
+            receiptsValidation.error || "Unknown error",
+          );
           return;
         }
       }
@@ -107,87 +141,98 @@ export class ValidationMiddleware {
 
       next();
     } catch (error) {
-      console.error('Validation error:', error);
-      this.sendError(res, 500, 'INTERNAL_ERROR', 'Internal validation error');
+      console.error("Validation error:", error);
+      this.sendError(res, 500, "INTERNAL_ERROR", "Internal validation error");
     }
   };
 
   // Parse and validate PF signature
-  private parseAndValidatePfSignature(signature: string): { success: boolean; data?: any; error?: string } {
+  private parseAndValidatePfSignature(signature: string): {
+    success: boolean;
+    data?: any;
+    error?: string;
+  } {
     try {
-      const decoded = Buffer.from(signature, 'base64').toString('utf-8');
+      const decoded = Buffer.from(signature, "base64").toString("utf-8");
       const parsed = JSON.parse(decoded);
-      
+
       const validation = PfSignatureSchema.safeParse(parsed);
       if (!validation.success) {
-        return { success: false, error: 'Invalid signature schema' };
+        return { success: false, error: "Invalid signature schema" };
       }
 
       return { success: true, data: validation.data };
     } catch (error) {
-      console.error('Signature parsing error:', error);
-      return { success: false, error: 'Failed to parse signature' };
+      console.error("Signature parsing error:", error);
+      return { success: false, error: "Failed to parse signature" };
     }
   }
 
   // Validate access receipts
-  private validateAccessReceipts(receiptsHeader: string, expectedTenant: string): { 
-    success: boolean; 
-    errorCode?: string; 
-    error?: string 
+  private validateAccessReceipts(
+    receiptsHeader: string,
+    expectedTenant: string,
+  ): {
+    success: boolean;
+    errorCode?: string;
+    error?: string;
   } {
     try {
       const receipts = JSON.parse(receiptsHeader);
-      
+
       if (!Array.isArray(receipts)) {
-        return { success: false, errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID, error: 'Invalid receipts format' };
+        return {
+          success: false,
+          errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID,
+          error: "Invalid receipts format",
+        };
       }
 
       for (const receipt of receipts) {
         // Validate schema
         const validation = AccessReceiptSchema.safeParse(receipt);
         if (!validation.success) {
-          return { 
-            success: false, 
-            errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID, 
-            error: 'Invalid receipt schema' 
+          return {
+            success: false,
+            errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID,
+            error: "Invalid receipt schema",
           };
         }
 
         // Check tenant consistency
         if (receipt.tenant !== expectedTenant) {
-          return { 
-            success: false, 
-            errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID, 
-            error: 'Receipt tenant mismatch' 
+          return {
+            success: false,
+            errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID,
+            error: "Receipt tenant mismatch",
           };
         }
 
         // Check expiration
         if (this.isSignatureExpired(receipt.expires_at)) {
-          return { 
-            success: false, 
-            errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_EXPIRED, 
-            error: 'Receipt has expired' 
+          return {
+            success: false,
+            errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_EXPIRED,
+            error: "Receipt has expired",
           };
         }
 
         // Verify receipt signature
         if (!this.verifyReceiptSignature(receipt)) {
-          return { 
-            success: false, 
-            errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID, 
-            error: 'Invalid receipt signature' 
+          return {
+            success: false,
+            errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID,
+            error: "Invalid receipt signature",
           };
         }
       }
 
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID, 
-        error: 'Failed to parse receipts' 
+      return {
+        success: false,
+        errorCode: VALIDATION_ERROR_CODES.ACCESS_RECEIPT_INVALID,
+        error: "Failed to parse receipts",
       };
     }
   }
@@ -203,15 +248,18 @@ export class ValidationMiddleware {
   private verifySignature(signatureData: any): boolean {
     try {
       const { signature, ...dataToSign } = signatureData;
-      const dataString = JSON.stringify(dataToSign, Object.keys(dataToSign).sort());
-      
+      const dataString = JSON.stringify(
+        dataToSign,
+        Object.keys(dataToSign).sort(),
+      );
+
       const expectedSignature = createHmac(this.algorithm, this.secretKey)
         .update(dataString)
-        .digest('hex');
-      
+        .digest("hex");
+
       return signature === expectedSignature;
     } catch (error) {
-      console.error('Signature verification error:', error);
+      console.error("Signature verification error:", error);
       return false;
     }
   }
@@ -220,12 +268,15 @@ export class ValidationMiddleware {
   private verifyReceiptSignature(receipt: any): boolean {
     try {
       const { signature, ...dataToSign } = receipt;
-      const dataString = JSON.stringify(dataToSign, Object.keys(dataToSign).sort());
-      
+      const dataString = JSON.stringify(
+        dataToSign,
+        Object.keys(dataToSign).sort(),
+      );
+
       const expectedSignature = createHmac(this.algorithm, this.secretKey)
         .update(dataString)
-        .digest('hex');
-      
+        .digest("hex");
+
       return signature === expectedSignature;
     } catch (error) {
       return false;
@@ -233,17 +284,23 @@ export class ValidationMiddleware {
   }
 
   // Send structured error response
-  private sendError(res: Response, statusCode: number, code: string, message: string, details?: any): void {
+  private sendError(
+    res: Response,
+    statusCode: number,
+    code: string,
+    message: string,
+    details?: any,
+  ): void {
     const errorResponse: ValidationError = {
       code,
       message,
-      details
+      details,
     };
 
     res.status(statusCode).json({
       error: errorResponse,
       timestamp: new Date().toISOString(),
-      request_id: res.locals['requestId'] || 'unknown'
+      request_id: res.locals["requestId"] || "unknown",
     });
   }
 
@@ -254,27 +311,32 @@ export class ValidationMiddleware {
     capabilities: string[];
     expires_in: number;
   }): string {
-    const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
-    const nonce = randomBytes(16).toString('hex');
-    
+    const expiresAt = new Date(
+      Date.now() + data.expires_in * 1000,
+    ).toISOString();
+    const nonce = randomBytes(16).toString("hex");
+
     // Create signature data without expires_in (since it's not part of the final structure)
     const signatureData = {
       tenant: data.tenant,
       user_id: data.user_id,
       capabilities: data.capabilities,
       nonce,
-      expires_at: expiresAt
+      expires_at: expiresAt,
     };
 
-    const dataString = JSON.stringify(signatureData, Object.keys(signatureData).sort());
-    
+    const dataString = JSON.stringify(
+      signatureData,
+      Object.keys(signatureData).sort(),
+    );
+
     const signature = createHmac(this.algorithm, this.secretKey)
       .update(dataString)
-      .digest('hex');
+      .digest("hex");
 
     const fullData = { ...signatureData, signature };
-    const base64Data = Buffer.from(JSON.stringify(fullData)).toString('base64');
-    
+    const base64Data = Buffer.from(JSON.stringify(fullData)).toString("base64");
+
     return base64Data;
   }
 
@@ -287,19 +349,24 @@ export class ValidationMiddleware {
     result_hash: string;
     expires_in: number;
   }): any {
-    const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
-    const nonce = randomBytes(16).toString('hex');
-    
+    const expiresAt = new Date(
+      Date.now() + data.expires_in * 1000,
+    ).toISOString();
+    const nonce = randomBytes(16).toString("hex");
+
     const receiptData = {
       ...data,
       nonce,
-      expires_at: expiresAt
+      expires_at: expiresAt,
     };
 
-    const dataString = JSON.stringify(receiptData, Object.keys(receiptData).sort());
+    const dataString = JSON.stringify(
+      receiptData,
+      Object.keys(receiptData).sort(),
+    );
     const signature = createHmac(this.algorithm, this.secretKey)
       .update(dataString)
-      .digest('hex');
+      .digest("hex");
 
     return { ...receiptData, signature };
   }
@@ -316,7 +383,11 @@ export class TenantRateLimiter {
     this.maxRequests = maxRequests;
   }
 
-  public limitByTenant = (req: Request, res: Response, next: NextFunction): void => {
+  public limitByTenant = (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): void => {
     const tenant = req.tenant;
     if (!tenant) {
       next();
@@ -330,7 +401,7 @@ export class TenantRateLimiter {
       // Reset or create new limit
       this.limits.set(tenant, {
         count: 1,
-        resetTime: now + this.windowMs
+        resetTime: now + this.windowMs,
       });
       next();
       return;
@@ -340,16 +411,16 @@ export class TenantRateLimiter {
       res.status(429).json({
         error: {
           code: VALIDATION_ERROR_CODES.RATE_LIMIT_EXCEEDED,
-          message: 'Rate limit exceeded for tenant',
+          message: "Rate limit exceeded for tenant",
           details: {
             tenant,
             limit: this.maxRequests,
             window_ms: this.windowMs,
-            reset_time: new Date(limit.resetTime).toISOString()
-          }
+            reset_time: new Date(limit.resetTime).toISOString(),
+          },
         },
         timestamp: new Date().toISOString(),
-        request_id: res.locals['requestId'] || 'unknown'
+        request_id: res.locals["requestId"] || "unknown",
       });
       return;
     }
@@ -370,10 +441,15 @@ export class TenantRateLimiter {
 }
 
 // Request ID middleware
-export const requestIdMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  const requestId = req.headers['x-request-id'] as string || randomBytes(8).toString('hex');
-  res.locals['requestId'] = requestId;
-  req.headers['x-request-id'] = requestId;
+export const requestIdMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  const requestId =
+    (req.headers["x-request-id"] as string) || randomBytes(8).toString("hex");
+  res.locals["requestId"] = requestId;
+  req.headers["x-request-id"] = requestId;
   next();
 };
 

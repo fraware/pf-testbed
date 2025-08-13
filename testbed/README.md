@@ -57,6 +57,7 @@ testbed/
 ## Quick Start
 
 ### 1. Environment Setup
+
 ```bash
 # Copy environment configuration
 cp .env.example .env
@@ -66,6 +67,7 @@ cp .env.example .env
 ```
 
 ### 2. Start Services
+
 ```bash
 # Using Makefile (recommended)
 make up
@@ -75,6 +77,7 @@ docker-compose up -d
 ```
 
 ### 3. Access Services
+
 - **Testbed Gateway**: http://localhost:3003
 - **Self-Serve Ingress**: http://localhost:3001
 - **Grafana Dashboard**: http://localhost:3100
@@ -84,6 +87,7 @@ docker-compose up -d
 ## Development Workflow
 
 ### Using Makefile
+
 ```bash
 # Quick development commands
 make up          # Start all services
@@ -99,6 +103,7 @@ make testbed-down # Destroy testbed
 ```
 
 ### Testing
+
 ```bash
 # Run specific test suites
 npm test                    # TypeScript tests
@@ -133,29 +138,36 @@ npm run test:observability # Observability tests
 ## Business Scenarios
 
 ### Support Triage
+
 Automated support ticket classification and routing with capability verification.
 
 ### Expense Approval
+
 Expense report processing with policy compliance and fraud detection.
 
 ### Sales Outreach
+
 Lead qualification and personalized outreach with compliance guarantees.
 
 ### HR Onboarding
+
 Employee onboarding with document validation and access management.
 
 ### Dev Triage
+
 Development issue classification with security assessment.
 
 ## Monitoring & Observability
 
 ### Metrics
+
 - SLO violations and compliance
 - Request latency and throughput
 - Theorem verification rates
 - Security incident tracking
 
 ### Dashboards
+
 - Real-time performance monitoring
 - Security alert visualization
 - Business metric tracking
@@ -164,6 +176,7 @@ Development issue classification with security assessment.
 ## Contributing
 
 ### Development Setup
+
 1. Fork and clone the repository
 2. Install dependencies: `npm install && pip install -r requirements.txt`
 3. Copy `.env.example` to `.env` and configure
@@ -171,6 +184,7 @@ Development issue classification with security assessment.
 5. Run tests: `make test`
 
 ### Code Standards
+
 - TypeScript with strict typing
 - Python with type hints
 - Comprehensive test coverage
@@ -184,6 +198,7 @@ This project is licensed under the MIT License - see the [LICENSE](../LICENSE) f
 ## Support
 
 For questions and support:
+
 - Create an issue in the repository
 - Check the documentation in each component directory
 - Review the Postman collection in `docs/postman.json`

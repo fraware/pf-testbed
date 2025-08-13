@@ -1,5 +1,9 @@
-import { ToolCall, ToolResult, CapabilityToken } from '../../../runtime/gateway/src/types';
-import { ToolEmulator } from '../base/emulator';
+import {
+  ToolCall,
+  ToolResult,
+  CapabilityToken,
+} from "../../../runtime/gateway/src/types";
+import { ToolEmulator } from "../base/emulator";
 
 export interface CapabilityCheck {
   required: string[];
@@ -17,7 +21,7 @@ export interface CapabilityLog {
   tool: string;
   required_capabilities: string[];
   provided_capabilities: string[];
-  result: 'ALLOW' | 'DENY_CAP_MISS' | 'DENY_QUOTA' | 'DENY_RATE_LIMIT';
+  result: "ALLOW" | "DENY_CAP_MISS" | "DENY_QUOTA" | "DENY_RATE_LIMIT";
   metadata: Record<string, any>;
 }
 
@@ -32,8 +36,12 @@ export class CapabilityBroker {
   private emulators: Map<string, ToolEmulator> = new Map();
   private capabilityLogs: CapabilityLog[] = [];
   private quotas: Map<string, QuotaConfig> = new Map();
-  private usage: Map<string, { daily: number; monthly: number; burst: number; lastReset: number }> = new Map();
-  private rateLimitWindows: Map<string, { start: number; count: number }> = new Map();
+  private usage: Map<
+    string,
+    { daily: number; monthly: number; burst: number; lastReset: number }
+  > = new Map();
+  private rateLimitWindows: Map<string, { start: number; count: number }> =
+    new Map();
 
   constructor() {
     this.initializeDefaultQuotas();
@@ -42,24 +50,24 @@ export class CapabilityBroker {
   private initializeDefaultQuotas(): void {
     // Default quotas for common tools
     const defaultQuotas: Record<string, QuotaConfig> = {
-      'slack': {
+      slack: {
         daily_limit: 1000,
         monthly_limit: 30000,
         burst_limit: 100,
-        reset_time: '00:00'
+        reset_time: "00:00",
       },
-      'stripe': {
+      stripe: {
         daily_limit: 100,
         monthly_limit: 3000,
         burst_limit: 20,
-        reset_time: '00:00'
+        reset_time: "00:00",
       },
-      'email': {
+      email: {
         daily_limit: 500,
         monthly_limit: 15000,
         burst_limit: 50,
-        reset_time: '00:00'
-      }
+        reset_time: "00:00",
+      },
     };
 
     Object.entries(defaultQuotas).forEach(([tool, quota]) => {
@@ -72,18 +80,18 @@ export class CapabilityBroker {
    */
   registerEmulator(emulator: ToolEmulator): void {
     this.emulators.set(emulator.name, emulator);
-    
+
     // Initialize usage tracking for this emulator
     this.usage.set(emulator.name, {
       daily: 0,
       monthly: 0,
       burst: 0,
-      lastReset: Date.now()
+      lastReset: Date.now(),
     });
-    
+
     this.rateLimitWindows.set(emulator.name, {
       start: Date.now(),
-      count: 0
+      count: 0,
     });
   }
 
@@ -91,29 +99,33 @@ export class CapabilityBroker {
    * Check if a tool call has the required capabilities
    */
   checkCapability(call: ToolCall): CapabilityCheck {
-    const emulator = this.emulators.get(call.tool.split('.')[0]);
+    const emulator = this.emulators.get(call.tool.split(".")[0]);
     if (!emulator) {
       return {
         required: [],
         provided: call.capability ? [call.capability] : [],
         valid: false,
         missing: [],
-        excess: []
+        excess: [],
       };
     }
 
     const requiredCapabilities = emulator.capabilities;
     const providedCapabilities = call.capability ? [call.capability] : [];
 
-    const missing = requiredCapabilities.filter(cap => !providedCapabilities.includes(cap));
-    const excess = providedCapabilities.filter(cap => !requiredCapabilities.includes(cap));
+    const missing = requiredCapabilities.filter(
+      (cap) => !providedCapabilities.includes(cap),
+    );
+    const excess = providedCapabilities.filter(
+      (cap) => !requiredCapabilities.includes(cap),
+    );
 
     return {
       required: requiredCapabilities,
       provided: providedCapabilities,
       valid: missing.length === 0,
       missing,
-      excess
+      excess,
     };
   }
 
@@ -121,16 +133,16 @@ export class CapabilityBroker {
    * Check if a tool call is within quota limits
    */
   checkQuota(call: ToolCall): { allowed: boolean; reason?: string } {
-    const toolName = call.tool.split('.')[0];
+    const toolName = call.tool.split(".")[0];
     const quota = this.quotas.get(toolName);
-    
+
     if (!quota) {
       return { allowed: true }; // No quota configured
     }
 
     const usage = this.usage.get(toolName);
     if (!usage) {
-      return { allowed: false, reason: 'Usage tracking not initialized' };
+      return { allowed: false, reason: "Usage tracking not initialized" };
     }
 
     // Check if we need to reset counters
@@ -138,17 +150,17 @@ export class CapabilityBroker {
 
     // Check daily limit
     if (usage.daily >= quota.daily_limit) {
-      return { allowed: false, reason: 'Daily quota exceeded' };
+      return { allowed: false, reason: "Daily quota exceeded" };
     }
 
     // Check monthly limit
     if (usage.monthly >= quota.monthly_limit) {
-      return { allowed: false, reason: 'Monthly quota exceeded' };
+      return { allowed: false, reason: "Monthly quota exceeded" };
     }
 
     // Check burst limit
     if (usage.burst >= quota.burst_limit) {
-      return { allowed: false, reason: 'Burst quota exceeded' };
+      return { allowed: false, reason: "Burst quota exceeded" };
     }
 
     return { allowed: true };
@@ -158,16 +170,16 @@ export class CapabilityBroker {
    * Check rate limiting
    */
   checkRateLimit(call: ToolCall): { allowed: boolean; reason?: string } {
-    const toolName = call.tool.split('.')[0];
+    const toolName = call.tool.split(".")[0];
     const quota = this.quotas.get(toolName);
-    
+
     if (!quota) {
       return { allowed: true }; // No rate limiting configured
     }
 
     const window = this.rateLimitWindows.get(toolName);
     if (!window) {
-      return { allowed: false, reason: 'Rate limit window not initialized' };
+      return { allowed: false, reason: "Rate limit window not initialized" };
     }
 
     const now = Date.now();
@@ -181,7 +193,7 @@ export class CapabilityBroker {
     }
 
     if (window.count >= quota.burst_limit) {
-      return { allowed: false, reason: 'Rate limit exceeded' };
+      return { allowed: false, reason: "Rate limit exceeded" };
     }
 
     window.count++;
@@ -193,84 +205,83 @@ export class CapabilityBroker {
    */
   async execute(call: ToolCall): Promise<ToolResult> {
     const startTime = Date.now();
-    
+
     // Check capabilities
     const capabilityCheck = this.checkCapability(call);
     if (!capabilityCheck.valid) {
-      const log = this.createCapabilityLog(call, 'DENY_CAP_MISS', {
+      const log = this.createCapabilityLog(call, "DENY_CAP_MISS", {
         missing_capabilities: capabilityCheck.missing,
-        required_capabilities: capabilityCheck.required
+        required_capabilities: capabilityCheck.required,
       });
       this.capabilityLogs.push(log);
-      
+
       return {
         id: this.generateId(),
         success: false,
-        error: `Missing required capabilities: ${capabilityCheck.missing.join(', ')}`,
+        error: `Missing required capabilities: ${capabilityCheck.missing.join(", ")}`,
         capability_consumed: call.capability,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
 
     // Check quota
     const quotaCheck = this.checkQuota(call);
     if (!quotaCheck.allowed) {
-      const log = this.createCapabilityLog(call, 'DENY_QUOTA', {
-        quota_reason: quotaCheck.reason
+      const log = this.createCapabilityLog(call, "DENY_QUOTA", {
+        quota_reason: quotaCheck.reason,
       });
       this.capabilityLogs.push(log);
-      
+
       return {
         id: this.generateId(),
         success: false,
         error: `Quota exceeded: ${quotaCheck.reason}`,
         capability_consumed: call.capability,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
 
     // Check rate limiting
     const rateLimitCheck = this.checkRateLimit(call);
     if (!rateLimitCheck.allowed) {
-      const log = this.createCapabilityLog(call, 'DENY_RATE_LIMIT', {
-        rate_limit_reason: rateLimitCheck.reason
+      const log = this.createCapabilityLog(call, "DENY_RATE_LIMIT", {
+        rate_limit_reason: rateLimitCheck.reason,
       });
       this.capabilityLogs.push(log);
-      
+
       return {
         id: this.generateId(),
         success: false,
         error: `Rate limit exceeded: ${rateLimitCheck.reason}`,
         capability_consumed: call.capability,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
 
     // Execute the tool call
     try {
-      const emulator = this.emulators.get(call.tool.split('.')[0]);
+      const emulator = this.emulators.get(call.tool.split(".")[0]);
       if (!emulator) {
         throw new Error(`Tool emulator not found: ${call.tool}`);
       }
 
       // Update usage counters
-      this.updateUsage(call.tool.split('.')[0]);
+      this.updateUsage(call.tool.split(".")[0]);
 
       const result = await emulator.execute(call);
-      
+
       // Log successful execution
-      const log = this.createCapabilityLog(call, 'ALLOW', {
+      const log = this.createCapabilityLog(call, "ALLOW", {
         execution_time: Date.now() - startTime,
-        result_id: result.id
+        result_id: result.id,
       });
       this.capabilityLogs.push(log);
 
       return result;
-
     } catch (error) {
-      const log = this.createCapabilityLog(call, 'ALLOW', {
+      const log = this.createCapabilityLog(call, "ALLOW", {
         execution_time: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       });
       this.capabilityLogs.push(log);
 
@@ -291,23 +302,23 @@ export class CapabilityBroker {
     let logs = [...this.capabilityLogs];
 
     if (filter?.tenant) {
-      logs = logs.filter(log => log.tenant === filter.tenant);
+      logs = logs.filter((log) => log.tenant === filter.tenant);
     }
 
     if (filter?.tool) {
-      logs = logs.filter(log => log.tool === filter.tool);
+      logs = logs.filter((log) => log.tool === filter.tool);
     }
 
     if (filter?.result) {
-      logs = logs.filter(log => log.result === filter.result);
+      logs = logs.filter((log) => log.result === filter.result);
     }
 
     if (filter?.startTime) {
-      logs = logs.filter(log => new Date(log.timestamp) >= filter.startTime!);
+      logs = logs.filter((log) => new Date(log.timestamp) >= filter.startTime!);
     }
 
     if (filter?.endTime) {
-      logs = logs.filter(log => new Date(log.timestamp) <= filter.endTime!);
+      logs = logs.filter((log) => new Date(log.timestamp) <= filter.endTime!);
     }
 
     return logs;
@@ -320,7 +331,7 @@ export class CapabilityBroker {
     if (toolName) {
       const usage = this.usage.get(toolName);
       const quota = this.quotas.get(toolName);
-      
+
       if (!usage || !quota) {
         return {};
       }
@@ -335,7 +346,7 @@ export class CapabilityBroker {
         monthly_remaining: quota.monthly_limit - usage.monthly,
         burst_usage: usage.burst,
         burst_limit: quota.burst_limit,
-        burst_remaining: quota.burst_limit - usage.burst
+        burst_remaining: quota.burst_limit - usage.burst,
       };
     }
 
@@ -352,33 +363,34 @@ export class CapabilityBroker {
    */
   setQuota(toolName: string, quota: QuotaConfig): void {
     this.quotas.set(toolName, quota);
-    
+
     // Initialize usage tracking if not exists
     if (!this.usage.has(toolName)) {
       this.usage.set(toolName, {
         daily: 0,
         monthly: 0,
         burst: 0,
-        lastReset: Date.now()
+        lastReset: Date.now(),
       });
     }
   }
 
   private createCapabilityLog(
-    call: ToolCall, 
-    result: CapabilityLog['result'], 
-    metadata: Record<string, any> = {}
+    call: ToolCall,
+    result: CapabilityLog["result"],
+    metadata: Record<string, any> = {},
   ): CapabilityLog {
     return {
       timestamp: new Date().toISOString(),
       tool_call_id: call.id,
       tenant: call.tenant,
-      user: call.parameters.user || 'unknown',
+      user: call.parameters.user || "unknown",
       tool: call.tool,
-      required_capabilities: this.emulators.get(call.tool.split('.')[0])?.capabilities || [],
+      required_capabilities:
+        this.emulators.get(call.tool.split(".")[0])?.capabilities || [],
       provided_capabilities: call.capability ? [call.capability] : [],
       result,
-      metadata
+      metadata,
     };
   }
 
@@ -388,7 +400,7 @@ export class CapabilityBroker {
 
     const now = Date.now();
     const resetTime = this.parseResetTime(quota.reset_time);
-    
+
     // Check daily reset
     if (this.isNewDay(usage.lastReset, now)) {
       usage.daily = 0;
@@ -422,27 +434,30 @@ export class CapabilityBroker {
   }
 
   private parseResetTime(timeStr: string): { hour: number; minute: number } {
-    const [hour, minute] = timeStr.split(':').map(Number);
+    const [hour, minute] = timeStr.split(":").map(Number);
     return { hour, minute };
   }
 
   private isNewDay(lastReset: number, now: number): boolean {
     const lastDate = new Date(lastReset);
     const currentDate = new Date(now);
-    return lastDate.getDate() !== currentDate.getDate() || 
-           lastDate.getMonth() !== currentDate.getMonth() || 
-           lastDate.getFullYear() !== currentDate.getFullYear();
+    return (
+      lastDate.getDate() !== currentDate.getDate() ||
+      lastDate.getMonth() !== currentDate.getMonth() ||
+      lastDate.getFullYear() !== currentDate.getFullYear()
+    );
   }
 
   private isNewMonth(lastReset: number, now: number): boolean {
     const lastDate = new Date(lastReset);
     const currentDate = new Date(now);
-    return lastDate.getMonth() !== currentDate.getMonth() || 
-           lastDate.getFullYear() !== currentDate.getFullYear();
+    return (
+      lastDate.getMonth() !== currentDate.getMonth() ||
+      lastDate.getFullYear() !== currentDate.getFullYear()
+    );
   }
 
   private generateId(): string {
     return `cap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }
-

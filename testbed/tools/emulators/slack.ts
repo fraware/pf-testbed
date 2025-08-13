@@ -1,5 +1,5 @@
-import { BaseToolEmulator, ToolEmulatorConfig } from '../base/emulator';
-import { ToolCall } from '../../../runtime/gateway/src/types';
+import { BaseToolEmulator, ToolEmulatorConfig } from "../base/emulator";
+import { ToolCall } from "../../../runtime/gateway/src/types";
 
 export interface SlackMessage {
   id: string;
@@ -23,38 +23,38 @@ export class SlackEmulator extends BaseToolEmulator {
   private users: Map<string, any> = new Map();
 
   constructor() {
-    super('slack', '1.0.0', ['slack:read', 'slack:write', 'slack:admin']);
-    
+    super("slack", "1.0.0", ["slack:read", "slack:write", "slack:admin"]);
+
     // Initialize with default mock data
     this.initializeMockData();
   }
 
   private initializeMockData(): void {
     // Default channels
-    this.channels.set('C1234567890', {
-      id: 'C1234567890',
-      name: 'general',
+    this.channels.set("C1234567890", {
+      id: "C1234567890",
+      name: "general",
       is_private: false,
-      members: ['U1234567890', 'U0987654321']
+      members: ["U1234567890", "U0987654321"],
     });
 
     // Default users
-    this.users.set('U1234567890', {
-      id: 'U1234567890',
-      name: 'john_doe',
-      real_name: 'John Doe',
-      is_bot: false
+    this.users.set("U1234567890", {
+      id: "U1234567890",
+      name: "john_doe",
+      real_name: "John Doe",
+      is_bot: false,
     });
 
     // Default messages
-    this.messages.set('C1234567890', [
+    this.messages.set("C1234567890", [
       {
-        id: 'M1234567890',
-        channel: 'C1234567890',
-        text: 'Hello world!',
-        user: 'U1234567890',
-        timestamp: '1234567890.123456'
-      }
+        id: "M1234567890",
+        channel: "C1234567890",
+        text: "Hello world!",
+        user: "U1234567890",
+        timestamp: "1234567890.123456",
+      },
     ]);
   }
 
@@ -62,13 +62,13 @@ export class SlackEmulator extends BaseToolEmulator {
     await this.simulateDelay();
 
     switch (call.tool) {
-      case 'slack.post_message':
+      case "slack.post_message":
         return this.postMessageMock(call);
-      case 'slack.get_channels':
+      case "slack.get_channels":
         return this.getChannelsMock(call);
-      case 'slack.get_messages':
+      case "slack.get_messages":
         return this.getMessagesMock(call);
-      case 'slack.get_user':
+      case "slack.get_user":
         return this.getUserMock(call);
       default:
         throw new Error(`Unknown Slack tool: ${call.tool}`);
@@ -83,8 +83,8 @@ export class SlackEmulator extends BaseToolEmulator {
 
   protected async executeHybrid(call: ToolCall): Promise<any> {
     // Hybrid mode: use real for some operations, mock for others
-    const realOperations = ['slack.post_message'];
-    
+    const realOperations = ["slack.post_message"];
+
     if (realOperations.includes(call.tool)) {
       return this.executeReal(call);
     } else {
@@ -94,7 +94,7 @@ export class SlackEmulator extends BaseToolEmulator {
 
   private async postMessageMock(call: ToolCall): Promise<any> {
     const { channel, text, thread_ts } = call.parameters;
-    
+
     if (!this.channels.has(channel)) {
       throw new Error(`Channel ${channel} not found`);
     }
@@ -103,9 +103,9 @@ export class SlackEmulator extends BaseToolEmulator {
       id: this.generateId(),
       channel,
       text,
-      user: call.parameters.user || 'U1234567890',
+      user: call.parameters.user || "U1234567890",
       timestamp: (Date.now() / 1000).toString(),
-      thread_ts
+      thread_ts,
     };
 
     if (!this.messages.has(channel)) {
@@ -117,7 +117,7 @@ export class SlackEmulator extends BaseToolEmulator {
       ok: true,
       channel,
       ts: message.timestamp,
-      message: message
+      message: message,
     };
   }
 
@@ -125,18 +125,18 @@ export class SlackEmulator extends BaseToolEmulator {
     const channels = Array.from(this.channels.values());
     return {
       ok: true,
-      channels: channels.map(ch => ({
+      channels: channels.map((ch) => ({
         id: ch.id,
         name: ch.name,
         is_private: ch.is_private,
-        num_members: ch.members.length
-      }))
+        num_members: ch.members.length,
+      })),
     };
   }
 
   private async getMessagesMock(call: ToolCall): Promise<any> {
     const { channel, limit = 100 } = call.parameters;
-    
+
     if (!this.messages.has(channel)) {
       return { ok: true, messages: [] };
     }
@@ -144,50 +144,51 @@ export class SlackEmulator extends BaseToolEmulator {
     const messages = this.messages.get(channel)!.slice(-limit);
     return {
       ok: true,
-      messages: messages.map(msg => ({
-        type: 'message',
+      messages: messages.map((msg) => ({
+        type: "message",
         user: msg.user,
         text: msg.text,
         ts: msg.timestamp,
-        thread_ts: msg.thread_ts
-      }))
+        thread_ts: msg.thread_ts,
+      })),
     };
   }
 
   private async getUserMock(call: ToolCall): Promise<any> {
     const { user } = call.parameters;
-    
+
     if (!this.users.has(user)) {
       throw new Error(`User ${user} not found`);
     }
 
     return {
       ok: true,
-      user: this.users.get(user)
+      user: this.users.get(user),
     };
   }
 
   // Override setMockData to handle Slack-specific data
   setMockData(data: any): void {
     super.setMockData(data);
-    
+
     if (data.channels) {
       data.channels.forEach((ch: SlackChannel) => {
         this.channels.set(ch.id, ch);
       });
     }
-    
+
     if (data.users) {
       data.users.forEach((user: any) => {
         this.users.set(user.id, user);
       });
     }
-    
+
     if (data.messages) {
-      Object.entries(data.messages).forEach(([channelId, msgs]: [string, any]) => {
-        this.messages.set(channelId, msgs);
-      });
+      Object.entries(data.messages).forEach(
+        ([channelId, msgs]: [string, any]) => {
+          this.messages.set(channelId, msgs);
+        },
+      );
     }
   }
 }
-

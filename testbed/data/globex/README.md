@@ -10,6 +10,7 @@ Tenant data structure for Globex Corporation, a fictional manufacturing company.
 ## Knowledge Base
 
 The knowledge base contains:
+
 - Manufacturing procedures
 - Safety guidelines
 - Quality control documentation
@@ -19,6 +20,7 @@ The knowledge base contains:
 ## Seed Data
 
 Seed data includes:
+
 - Sample employee records
 - Test safety incidents
 - Mock quality reports
@@ -35,17 +37,17 @@ Seed data includes:
 ## Usage
 
 ```typescript
-import { GlobexDataStore } from './globex-store';
+import { GlobexDataStore } from "./globex-store";
 
 const store = new GlobexDataStore({
-  tenant: 'globex',
-  isolation: 'strict',
-  audit: true
+  tenant: "globex",
+  isolation: "strict",
+  audit: true,
 });
 
 // Access is automatically logged and receipted
 const data = await store.query({
-  table: 'safety_incidents',
-  filters: { status: 'investigating' }
+  table: "safety_incidents",
+  filters: { status: "investigating" },
 });
 ```

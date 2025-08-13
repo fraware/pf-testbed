@@ -1,13 +1,13 @@
 // Test setup file for Jest
-import { TextEncoder, TextDecoder } from 'util';
+import { TextEncoder, TextDecoder } from "util";
 
 // Mock crypto for consistent testing
 (global as any).TextEncoder = TextEncoder;
 (global as any).TextDecoder = TextDecoder;
 
 // Mock environment variables
-process.env['NODE_ENV'] = 'test';
-process.env['PF_SIGNATURE_SECRET'] = 'test-secret-key';
+process.env["NODE_ENV"] = "test";
+process.env["PF_SIGNATURE_SECRET"] = "test-secret-key";
 
 // Global test utilities
 global.console = {

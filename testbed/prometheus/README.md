@@ -9,6 +9,7 @@ Prometheus monitoring configuration for the Provability Fabric testbed.
 ## Metrics
 
 ### Core Metrics
+
 - `testbed_slo_violations_total` - SLO violation counter
 - `testbed_request_duration_seconds` - Request latency histogram
 - `testbed_theorem_verification_rate` - Theorem verification gauge
@@ -16,12 +17,14 @@ Prometheus monitoring configuration for the Provability Fabric testbed.
 - `testbed_honeytoken_alerts` - Security alert counter
 
 ### Service Metrics
+
 - Gateway performance and health
 - Ingress request patterns
 - Ledger transaction metrics
 - Egress firewall processing stats
 
 ### Business Metrics
+
 - Tenant isolation effectiveness
 - Policy enforcement rates
 - Certificate generation metrics

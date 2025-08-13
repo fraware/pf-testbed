@@ -17,7 +17,7 @@ The egress firewall implements a multi-stage pipeline:
 ```json
 {
   "pii": "detected|none|masked",
-  "secrets": "detected|none|masked", 
+  "secrets": "detected|none|masked",
   "near_dupe": "detected|none",
   "non_interference": "passed|failed",
   "influencing_labels": ["label1", "label2"],
@@ -31,22 +31,22 @@ The egress firewall implements a multi-stage pipeline:
 ## Usage
 
 ```typescript
-import { EgressFirewall } from './egress-firewall';
+import { EgressFirewall } from "./egress-firewall";
 
 const firewall = new EgressFirewall({
-  patterns: ['ssn', 'credit_card', 'api_key'],
-  policies: ['pii_protection', 'secret_handling'],
-  llmProvider: 'openai'
+  patterns: ["ssn", "credit_card", "api_key"],
+  policies: ["pii_protection", "secret_handling"],
+  llmProvider: "openai",
 });
 
 const result = await firewall.process({
   content: userInput,
-  tenant: 'acme',
-  context: 'support_chat'
+  tenant: "acme",
+  context: "support_chat",
 });
 
-if (result.certificate.non_interference === 'failed') {
-  throw new Error('Content blocked by egress firewall');
+if (result.certificate.non_interference === "failed") {
+  throw new Error("Content blocked by egress firewall");
 }
 ```
 

@@ -1,35 +1,35 @@
-import { createHash } from 'crypto';
-import { z } from 'zod';
+import { createHash } from "crypto";
+import { z } from "zod";
 
 // Schema definitions matching the Go implementation
 export const SystemChannelSchema = z.object({
   hash: z.string().regex(/^[a-fA-F0-9]{64}$/),
-  policy_hash: z.string().regex(/^[a-fA-F0-9]{64}$/)
+  policy_hash: z.string().regex(/^[a-fA-F0-9]{64}$/),
 });
 
 export const UserChannelSchema = z.object({
   content_hash: z.string().regex(/^[a-fA-F0-9]{64}$/),
-  quoted: z.literal(true) // Must be true for untrusted channels
+  quoted: z.literal(true), // Must be true for untrusted channels
 });
 
 export const RetrievedChannelSchema = z.object({
   receipt_id: z.string(),
   content_hash: z.string().regex(/^[a-fA-F0-9]{64}$/),
   quoted: z.literal(true), // Must be true for untrusted channels
-  labels: z.array(z.string())
+  labels: z.array(z.string()),
 });
 
 export const FileChannelSchema = z.object({
   sha256: z.string().regex(/^[a-fA-F0-9]{64}$/),
   media_type: z.string(),
-  quoted: z.literal(true) // Must be true for untrusted channels
+  quoted: z.literal(true), // Must be true for untrusted channels
 });
 
 export const InputChannelsSchema = z.object({
   system: SystemChannelSchema,
   user: UserChannelSchema,
   retrieved: z.array(RetrievedChannelSchema).optional(),
-  file: z.array(FileChannelSchema).optional()
+  file: z.array(FileChannelSchema).optional(),
 });
 
 export const AccessReceiptSchema = z.object({
@@ -41,12 +41,12 @@ export const AccessReceiptSchema = z.object({
   timestamp: z.number(),
   result_hash: z.string(),
   sign_alg: z.string(),
-  sig: z.string()
+  sig: z.string(),
 });
 
 export const SubjectSchema = z.object({
   id: z.string(),
-  caps: z.array(z.string())
+  caps: z.array(z.string()),
 });
 
 export const StepSchema = z.object({
@@ -55,7 +55,7 @@ export const StepSchema = z.object({
   caps_required: z.array(z.string()),
   labels_in: z.array(z.string()),
   labels_out: z.array(z.string()),
-  receipts: z.array(AccessReceiptSchema).optional()
+  receipts: z.array(AccessReceiptSchema).optional(),
 });
 
 export const ConstraintsSchema = z.object({
@@ -65,7 +65,7 @@ export const ConstraintsSchema = z.object({
   dp_delta: z.number().min(0).max(1e-5).optional(),
   latency_max: z.number().min(0).max(300).optional(),
   max_tokens: z.number().int().min(0).max(100000).optional(),
-  max_retrieval_results: z.number().int().min(0).max(1000).optional()
+  max_retrieval_results: z.number().int().min(0).max(1000).optional(),
 });
 
 export const PlanSchema = z.object({
@@ -79,7 +79,7 @@ export const PlanSchema = z.object({
   allowed_operations: z.array(z.string()),
   created_at: z.string().datetime().optional(),
   expires_at: z.string().datetime().optional(),
-  security_level: z.enum(['strict', 'permissive']).default('strict')
+  security_level: z.enum(["strict", "permissive"]).default("strict"),
 });
 
 // Types
@@ -110,41 +110,41 @@ export class PolicyKernel {
       "'; DROP TABLE users; --",
       "' OR '1'='1",
       "'; INSERT INTO users VALUES ('hacker', 'password'); --",
-      
+
       // NoSQL Injection
       '{"$where": "function() { return true; }"}',
       '{"$ne": null}',
-      
+
       // Command Injection
       "; rm -rf /",
       "| cat /etc/passwd",
       "&& echo 'hacked'",
-      
+
       // XSS
       "<script>alert('xss')</script>",
       "javascript:alert('xss')",
-      
+
       // Template Injection
       "{{7*7}}",
       "${7*7}",
-      
+
       // Path Traversal
       "../../../etc/passwd",
       "..\\..\\..\\windows\\system32\\config\\sam",
-      
+
       // LDAP Injection
       "*)(uid=*))(|(uid=*",
       "*))%00",
-      
+
       // XML Injection
       "<!DOCTYPE test [<!ENTITY xxe SYSTEM 'file:///etc/passwd'>]><test>&xxe;</test>",
-      
+
       // JSON Injection
       '{"__proto__": {"isAdmin": true}}',
-      '{"constructor": {"prototype": {"isAdmin": true}}}'
+      '{"constructor": {"prototype": {"isAdmin": true}}}',
     ];
 
-    patterns.forEach(pattern => {
+    patterns.forEach((pattern) => {
       this.injectionCorpus.add(pattern);
       this.blockedInjectionAttempts.set(pattern, 0);
     });
@@ -159,23 +159,27 @@ export class PolicyKernel {
       PlanSchema.parse(plan);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        errors.push(`Schema validation failed: ${error.errors.map(e => e.message).join(', ')}`);
+        errors.push(
+          `Schema validation failed: ${error.errors.map((e) => e.message).join(", ")}`,
+        );
       } else {
         errors.push(`Unknown validation error: ${error}`);
       }
     }
 
     // Security validations
-    if (plan.security_level === 'strict') {
+    if (plan.security_level === "strict") {
       // Validate that all untrusted channels have quoted=true
       if (!plan.input_channels.user.quoted) {
-        errors.push('User channel must have quoted=true in strict mode');
+        errors.push("User channel must have quoted=true in strict mode");
       }
 
       if (plan.input_channels.retrieved) {
         for (const retrieved of plan.input_channels.retrieved) {
           if (!retrieved.quoted) {
-            errors.push(`Retrieved channel ${retrieved.receipt_id} must have quoted=true in strict mode`);
+            errors.push(
+              `Retrieved channel ${retrieved.receipt_id} must have quoted=true in strict mode`,
+            );
           }
         }
       }
@@ -183,7 +187,9 @@ export class PolicyKernel {
       if (plan.input_channels.file) {
         for (const file of plan.input_channels.file) {
           if (!file.quoted) {
-            errors.push(`File channel ${file.sha256} must have quoted=true in strict mode`);
+            errors.push(
+              `File channel ${file.sha256} must have quoted=true in strict mode`,
+            );
           }
         }
       }
@@ -193,7 +199,9 @@ export class PolicyKernel {
     for (const step of plan.steps) {
       for (const requiredCap of step.caps_required) {
         if (!plan.subject.caps.includes(requiredCap)) {
-          errors.push(`Step ${step.tool} requires capability ${requiredCap} not possessed by subject ${plan.subject.id}`);
+          errors.push(
+            `Step ${step.tool} requires capability ${requiredCap} not possessed by subject ${plan.subject.id}`,
+          );
         }
       }
     }
@@ -207,20 +215,24 @@ export class PolicyKernel {
 
     // Validate constraints
     if (plan.constraints.budget > 10000) {
-      errors.push('Budget exceeds maximum allowed value of 10000');
+      errors.push("Budget exceeds maximum allowed value of 10000");
     }
 
     if (plan.constraints.dp_epsilon > 10) {
-      errors.push('Differential privacy epsilon exceeds maximum allowed value of 10');
+      errors.push(
+        "Differential privacy epsilon exceeds maximum allowed value of 10",
+      );
     }
 
     if (plan.constraints.dp_delta && plan.constraints.dp_delta > 1e-5) {
-      errors.push('Differential privacy delta exceeds maximum allowed value of 1e-5');
+      errors.push(
+        "Differential privacy delta exceeds maximum allowed value of 1e-5",
+      );
     }
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -229,25 +241,33 @@ export class PolicyKernel {
     step: Step,
     subject: Subject,
     receipts: AccessReceipt[],
-    labels: string[]
+    labels: string[],
   ): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     // Check capability matching
     for (const requiredCap of step.caps_required) {
       if (!subject.caps.includes(requiredCap)) {
-        errors.push(`Required capability ${requiredCap} not possessed by subject ${subject.id}`);
+        errors.push(
+          `Required capability ${requiredCap} not possessed by subject ${subject.id}`,
+        );
       }
     }
 
     // Check receipt validation for retrieval steps
-    if (step.tool === 'retrieve' || step.tool === 'data_query' || step.tool === 'search') {
+    if (
+      step.tool === "retrieve" ||
+      step.tool === "data_query" ||
+      step.tool === "search"
+    ) {
       if (!step.receipts || step.receipts.length === 0) {
         errors.push(`Retrieval step ${step.tool} must have access receipts`);
       } else {
         for (const receipt of step.receipts) {
           if (!this.validateReceipt(receipt)) {
-            errors.push(`Invalid receipt ${receipt.receipt_id} for step ${step.tool}`);
+            errors.push(
+              `Invalid receipt ${receipt.receipt_id} for step ${step.tool}`,
+            );
           }
         }
       }
@@ -256,13 +276,15 @@ export class PolicyKernel {
     // Check label flow
     for (const requiredLabel of step.labels_in) {
       if (!labels.includes(requiredLabel)) {
-        errors.push(`Required input label ${requiredLabel} not present for step ${step.tool}`);
+        errors.push(
+          `Required input label ${requiredLabel} not present for step ${step.tool}`,
+        );
       }
     }
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -277,7 +299,7 @@ export class PolicyKernel {
     const receiptTime = new Date(receipt.timestamp);
     const now = new Date();
     const ageHours = (now.getTime() - receiptTime.getTime()) / (1000 * 60 * 60);
-    
+
     if (ageHours > 24) {
       return false; // Receipt too old
     }
@@ -286,19 +308,23 @@ export class PolicyKernel {
   }
 
   // Check for injection attempts
-  checkForInjection(content: string): { blocked: boolean; pattern?: string; confidence: number } {
+  checkForInjection(content: string): {
+    blocked: boolean;
+    pattern?: string;
+    confidence: number;
+  } {
     const normalizedContent = content.toLowerCase();
-    
+
     for (const pattern of this.injectionCorpus) {
       if (normalizedContent.includes(pattern.toLowerCase())) {
         // Increment blocked attempts counter
         const currentCount = this.blockedInjectionAttempts.get(pattern) || 0;
         this.blockedInjectionAttempts.set(pattern, currentCount + 1);
-        
+
         return {
           blocked: true,
           pattern,
-          confidence: 0.95
+          confidence: 0.95,
         };
       }
     }
@@ -309,7 +335,7 @@ export class PolicyKernel {
       /[<>]\s*script/i,
       /javascript:/i,
       /\.\.\/\.\.\//,
-      /[{}]\s*\$[a-z]/i
+      /[{}]\s*\$[a-z]/i,
     ];
 
     for (const pattern of suspiciousPatterns) {
@@ -317,14 +343,14 @@ export class PolicyKernel {
         return {
           blocked: true,
           pattern: pattern.source,
-          confidence: 0.85
+          confidence: 0.85,
         };
       }
     }
 
     return {
       blocked: false,
-      confidence: 0.0
+      confidence: 0.0,
     };
   }
 
@@ -336,13 +362,18 @@ export class PolicyKernel {
     topBlockedPatterns: Array<{ pattern: string; count: number }>;
   } {
     const totalPatterns = this.injectionCorpus.size;
-    const blockedAttempts = Array.from(this.blockedInjectionAttempts.values())
-      .reduce((sum, count) => sum + count, 0);
-    
-    const blockedPercentage = totalPatterns > 0 ? 
-      (this.blockedInjectionAttempts.size / totalPatterns) * 100 : 0;
+    const blockedAttempts = Array.from(
+      this.blockedInjectionAttempts.values(),
+    ).reduce((sum, count) => sum + count, 0);
 
-    const topBlockedPatterns = Array.from(this.blockedInjectionAttempts.entries())
+    const blockedPercentage =
+      totalPatterns > 0
+        ? (this.blockedInjectionAttempts.size / totalPatterns) * 100
+        : 0;
+
+    const topBlockedPatterns = Array.from(
+      this.blockedInjectionAttempts.entries(),
+    )
       .map(([pattern, count]) => ({ pattern, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
@@ -351,42 +382,59 @@ export class PolicyKernel {
       totalPatterns,
       blockedAttempts,
       blockedPercentage,
-      topBlockedPatterns
+      topBlockedPatterns,
     };
   }
 
   // Validate numeric refinements
   validateNumericRefinements(
     constraints: Constraints,
-    actualValues: Record<string, number>
+    actualValues: Record<string, number>,
   ): { valid: boolean; violations: string[] } {
     const violations: string[] = [];
 
     if (actualValues.budget && actualValues.budget > constraints.budget) {
-      violations.push(`Budget violation: ${actualValues.budget} > ${constraints.budget}`);
+      violations.push(
+        `Budget violation: ${actualValues.budget} > ${constraints.budget}`,
+      );
     }
 
-    if (actualValues.dp_epsilon && actualValues.dp_epsilon > constraints.dp_epsilon) {
-      violations.push(`DP epsilon violation: ${actualValues.dp_epsilon} > ${constraints.dp_epsilon}`);
+    if (
+      actualValues.dp_epsilon &&
+      actualValues.dp_epsilon > constraints.dp_epsilon
+    ) {
+      violations.push(
+        `DP epsilon violation: ${actualValues.dp_epsilon} > ${constraints.dp_epsilon}`,
+      );
     }
 
-    if (actualValues.latency && actualValues.latency > (constraints.latency_max || 300)) {
-      violations.push(`Latency violation: ${actualValues.latency} > ${constraints.latency_max || 300}`);
+    if (
+      actualValues.latency &&
+      actualValues.latency > (constraints.latency_max || 300)
+    ) {
+      violations.push(
+        `Latency violation: ${actualValues.latency} > ${constraints.latency_max || 300}`,
+      );
     }
 
-    if (actualValues.tokens && actualValues.tokens > (constraints.max_tokens || 100000)) {
-      violations.push(`Token violation: ${actualValues.tokens} > ${constraints.max_tokens || 100000}`);
+    if (
+      actualValues.tokens &&
+      actualValues.tokens > (constraints.max_tokens || 100000)
+    ) {
+      violations.push(
+        `Token violation: ${actualValues.tokens} > ${constraints.max_tokens || 100000}`,
+      );
     }
 
     return {
       valid: violations.length === 0,
-      violations
+      violations,
     };
   }
 
   // Generate content hash for input validation
   generateContentHash(content: string): string {
-    return createHash('sha256').update(content).digest('hex');
+    return createHash("sha256").update(content).digest("hex");
   }
 
   // Validate system prompt hash
@@ -418,41 +466,51 @@ export class ToolBroker {
     subject: Subject,
     step: Step,
     receipts: AccessReceipt[],
-    labels: string[]
+    labels: string[],
   ): { approved: boolean; reason?: string; receipt?: string } {
     // Validate step execution
-    const validation = this.kernel.validateStepExecution(step, subject, receipts, labels);
-    
+    const validation = this.kernel.validateStepExecution(
+      step,
+      subject,
+      receipts,
+      labels,
+    );
+
     if (!validation.valid) {
-      this.logExecution(tool, subject.id, false, validation.errors.join(', '));
+      this.logExecution(tool, subject.id, false, validation.errors.join(", "));
       return {
         approved: false,
-        reason: `Step validation failed: ${validation.errors.join(', ')}`
+        reason: `Step validation failed: ${validation.errors.join(", ")}`,
       };
     }
 
     // Check for injection attempts in arguments
     const argsString = JSON.stringify(step.args);
     const injectionCheck = this.kernel.checkForInjection(argsString);
-    
+
     if (injectionCheck.blocked) {
-      this.logExecution(tool, subject.id, false, `Injection attempt blocked: ${injectionCheck.pattern}`);
+      this.logExecution(
+        tool,
+        subject.id,
+        false,
+        `Injection attempt blocked: ${injectionCheck.pattern}`,
+      );
       return {
         approved: false,
-        reason: `Injection attempt detected: ${injectionCheck.pattern}`
+        reason: `Injection attempt detected: ${injectionCheck.pattern}`,
       };
     }
 
     // Generate execution receipt
     const receipt = this.generateExecutionReceipt(tool, subject.id, step);
-    
+
     // Approve execution
     this.approvedTools.add(tool);
     this.logExecution(tool, subject.id, true);
-    
+
     return {
       approved: true,
-      receipt
+      receipt,
     };
   }
 
@@ -469,7 +527,7 @@ export class ToolBroker {
       tool,
       args,
       timestamp: new Date().toISOString(),
-      result: `Mock execution of ${tool}`
+      result: `Mock execution of ${tool}`,
     };
   }
 
@@ -482,15 +540,18 @@ export class ToolBroker {
     topBlockedReasons: Array<{ reason: string; count: number }>;
   } {
     const totalRequests = this.executionLog.length;
-    const approvedRequests = this.executionLog.filter(log => log.approved).length;
+    const approvedRequests = this.executionLog.filter(
+      (log) => log.approved,
+    ).length;
     const blockedRequests = totalRequests - approvedRequests;
-    const approvalRate = totalRequests > 0 ? (approvedRequests / totalRequests) * 100 : 0;
+    const approvalRate =
+      totalRequests > 0 ? (approvedRequests / totalRequests) * 100 : 0;
 
     // Count blocked reasons
     const blockedReasons = new Map<string, number>();
     this.executionLog
-      .filter(log => !log.approved && log.reason)
-      .forEach(log => {
+      .filter((log) => !log.approved && log.reason)
+      .forEach((log) => {
         const reason = log.reason!;
         blockedReasons.set(reason, (blockedReasons.get(reason) || 0) + 1);
       });
@@ -505,32 +566,41 @@ export class ToolBroker {
       approvedRequests,
       blockedRequests,
       approvalRate,
-      topBlockedReasons
+      topBlockedReasons,
     };
   }
 
-  private logExecution(tool: string, subject: string, approved: boolean, reason?: string): void {
+  private logExecution(
+    tool: string,
+    subject: string,
+    approved: boolean,
+    reason?: string,
+  ): void {
     this.executionLog.push({
       timestamp: new Date().toISOString(),
       tool,
       subject,
       approved,
-      reason
+      reason,
     });
   }
 
-  private generateExecutionReceipt(tool: string, subject: string, step: Step): string {
+  private generateExecutionReceipt(
+    tool: string,
+    subject: string,
+    step: Step,
+  ): string {
     const receiptData = {
       tool,
       subject,
       step_id: step.tool,
       timestamp: new Date().toISOString(),
-      nonce: Math.random().toString(36).substring(7)
+      nonce: Math.random().toString(36).substring(7),
     };
-    
-    return createHash('sha256')
+
+    return createHash("sha256")
       .update(JSON.stringify(receiptData))
-      .digest('hex');
+      .digest("hex");
   }
 }
 

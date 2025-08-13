@@ -1,5 +1,10 @@
-import { BaseAgentRunner } from '../../runtime/gateway/src/base-runner';
-import { Plan, ToolCall, ToolResult, AgentConfig } from '../../runtime/gateway/src/types';
+import { BaseAgentRunner } from "../../runtime/gateway/src/base-runner";
+import {
+  Plan,
+  ToolCall,
+  ToolResult,
+  AgentConfig,
+} from "../../runtime/gateway/src/types";
 
 /**
  * LangChain Agent Runner
@@ -11,8 +16,15 @@ export class LangChainRunner extends BaseAgentRunner {
   private tools: any[];
 
   constructor() {
-    super('langchain', '1.0.0', [
-      'slack', 'email', 'calendar', 'notion', 'stripe', 'github', 'search', 'fetch'
+    super("langchain", "1.0.0", [
+      "slack",
+      "email",
+      "calendar",
+      "notion",
+      "stripe",
+      "github",
+      "search",
+      "fetch",
     ]);
   }
 
@@ -21,33 +33,37 @@ export class LangChainRunner extends BaseAgentRunner {
    */
   async configure(config: AgentConfig): Promise<void> {
     await super.configure(config);
-    
+
     // Initialize LangChain
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       // Node.js environment
       try {
-        const { ChatOpenAI } = await import('langchain/chat_models/openai');
-        const { AgentExecutor, createOpenAIFunctionsAgent } = await import('langchain/agents');
-        const { PromptTemplate } = await import('langchain/prompts');
-        const { DynamicStructuredTool } = await import('langchain/tools');
-        
+        const { ChatOpenAI } = await import("langchain/chat_models/openai");
+        const { AgentExecutor, createOpenAIFunctionsAgent } = await import(
+          "langchain/agents"
+        );
+        const { PromptTemplate } = await import("langchain/prompts");
+        const { DynamicStructuredTool } = await import("langchain/tools");
+
         this.langchain = {
           ChatOpenAI,
           AgentExecutor,
           createOpenAIFunctionsAgent,
           PromptTemplate,
-          DynamicStructuredTool
+          DynamicStructuredTool,
         };
       } catch (error) {
-        throw new Error(`Failed to import LangChain: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(
+          `Failed to import LangChain: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
       }
     } else {
-      throw new Error('LangChain runner requires Node.js environment');
+      throw new Error("LangChain runner requires Node.js environment");
     }
 
     // Initialize tools
     this.tools = this.createTools();
-    
+
     // Initialize agent
     await this.initializeAgent(config);
   }
@@ -58,7 +74,7 @@ export class LangChainRunner extends BaseAgentRunner {
   async plan(json: any): Promise<Plan> {
     try {
       if (!this.agent) {
-        throw new Error('Agent not initialized');
+        throw new Error("Agent not initialized");
       }
 
       // Create prompt for planning
@@ -76,16 +92,17 @@ export class LangChainRunner extends BaseAgentRunner {
 
       // Execute the agent
       const result = await this.agent.invoke({
-        input: prompt
+        input: prompt,
       });
 
       // Parse the response into a plan
       const plan = this.parseResponseToPlan(result.output, json);
 
       return plan;
-
     } catch (error) {
-      throw new Error(`Failed to create plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create plan: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -103,28 +120,28 @@ export class LangChainRunner extends BaseAgentRunner {
       let error: string | undefined;
 
       switch (call.tool) {
-        case 'slack':
+        case "slack":
           result = await this.executeSlackTool(call.parameters);
           break;
-        case 'email':
+        case "email":
           result = await this.executeEmailTool(call.parameters);
           break;
-        case 'calendar':
+        case "calendar":
           result = await this.executeCalendarTool(call.parameters);
           break;
-        case 'notion':
+        case "notion":
           result = await this.executeNotionTool(call.parameters);
           break;
-        case 'stripe':
+        case "stripe":
           result = await this.executeStripeTool(call.parameters);
           break;
-        case 'github':
+        case "github":
           result = await this.executeGitHubTool(call.parameters);
           break;
-        case 'search':
+        case "search":
           result = await this.executeSearchTool(call.parameters);
           break;
-        case 'fetch':
+        case "fetch":
           result = await this.executeFetchTool(call.parameters);
           break;
         default:
@@ -145,19 +162,18 @@ export class LangChainRunner extends BaseAgentRunner {
           metadata: {
             tool: call.tool,
             tenant: call.tenant,
-            timestamp: call.timestamp
+            timestamp: call.timestamp,
           },
-          replayable: true
+          replayable: true,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-
     } catch (error) {
       return {
         id: call.id,
         success: false,
         result: undefined,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         capability_consumed: call.capability,
         trace: {
           id: this.generateId(),
@@ -168,11 +184,11 @@ export class LangChainRunner extends BaseAgentRunner {
             tool: call.tool,
             tenant: call.tenant,
             timestamp: call.timestamp,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : "Unknown error",
           },
-          replayable: false
+          replayable: false,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
   }
@@ -185,9 +201,9 @@ export class LangChainRunner extends BaseAgentRunner {
       // Create LLM
       const llm = new this.langchain.ChatOpenAI({
         openAIApiKey: config.api_key,
-        modelName: config.model || 'gpt-4',
+        modelName: config.model || "gpt-4",
         temperature: 0,
-        timeout: config.timeout
+        timeout: config.timeout,
       });
 
       // Create prompt template
@@ -219,18 +235,19 @@ export class LangChainRunner extends BaseAgentRunner {
       this.agent = await this.langchain.createOpenAIFunctionsAgent({
         llm,
         tools: this.tools,
-        prompt
+        prompt,
       });
 
       // Create executor
       this.agent = this.langchain.AgentExecutor.fromAgentAndTools({
         agent: this.agent,
         tools: this.tools,
-        verbose: true
+        verbose: true,
       });
-
     } catch (error) {
-      throw new Error(`Failed to initialize LangChain agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to initialize LangChain agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -241,146 +258,185 @@ export class LangChainRunner extends BaseAgentRunner {
     const tools = [];
 
     // Slack tool
-    tools.push(new this.langchain.DynamicStructuredTool({
-      name: 'slack',
-      description: 'Send Slack messages',
-      schema: {
-        type: 'object',
-        properties: {
-          channel: { type: 'string', description: 'Slack channel' },
-          message: { type: 'string', description: 'Message to send' }
+    tools.push(
+      new this.langchain.DynamicStructuredTool({
+        name: "slack",
+        description: "Send Slack messages",
+        schema: {
+          type: "object",
+          properties: {
+            channel: { type: "string", description: "Slack channel" },
+            message: { type: "string", description: "Message to send" },
+          },
+          required: ["channel", "message"],
         },
-        required: ['channel', 'message']
-      },
-      func: async (params: any) => {
-        return await this.executeSlackTool(params);
-      }
-    }));
+        func: async (params: any) => {
+          return await this.executeSlackTool(params);
+        },
+      }),
+    );
 
     // Email tool
-    tools.push(new this.langchain.DynamicStructuredTool({
-      name: 'email',
-      description: 'Send emails',
-      schema: {
-        type: 'object',
-        properties: {
-          to: { type: 'string', description: 'Recipient email' },
-          subject: { type: 'string', description: 'Email subject' },
-          body: { type: 'string', description: 'Email body' }
+    tools.push(
+      new this.langchain.DynamicStructuredTool({
+        name: "email",
+        description: "Send emails",
+        schema: {
+          type: "object",
+          properties: {
+            to: { type: "string", description: "Recipient email" },
+            subject: { type: "string", description: "Email subject" },
+            body: { type: "string", description: "Email body" },
+          },
+          required: ["to", "subject", "body"],
         },
-        required: ['to', 'subject', 'body']
-      },
-      func: async (params: any) => {
-        return await this.executeEmailTool(params);
-      }
-    }));
+        func: async (params: any) => {
+          return await this.executeEmailTool(params);
+        },
+      }),
+    );
 
     // Calendar tool
-    tools.push(new this.langchain.DynamicStructuredTool({
-      name: 'calendar',
-      description: 'Manage calendar events',
-      schema: {
-        type: 'object',
-        properties: {
-          action: { type: 'string', enum: ['create', 'update', 'delete'], description: 'Action to perform' },
-          title: { type: 'string', description: 'Event title' },
-          start: { type: 'string', description: 'Start time' },
-          end: { type: 'string', description: 'End time' }
+    tools.push(
+      new this.langchain.DynamicStructuredTool({
+        name: "calendar",
+        description: "Manage calendar events",
+        schema: {
+          type: "object",
+          properties: {
+            action: {
+              type: "string",
+              enum: ["create", "update", "delete"],
+              description: "Action to perform",
+            },
+            title: { type: "string", description: "Event title" },
+            start: { type: "string", description: "Start time" },
+            end: { type: "string", description: "End time" },
+          },
+          required: ["action", "title"],
         },
-        required: ['action', 'title']
-      },
-      func: async (params: any) => {
-        return await this.executeCalendarTool(params);
-      }
-    }));
+        func: async (params: any) => {
+          return await this.executeCalendarTool(params);
+        },
+      }),
+    );
 
     // Notion tool
-    tools.push(new this.langchain.DynamicStructuredTool({
-      name: 'notion',
-      description: 'Manage Notion pages',
-      schema: {
-        type: 'object',
-        properties: {
-          action: { type: 'string', enum: ['create', 'update', 'delete'], description: 'Action to perform' },
-          title: { type: 'string', description: 'Page title' },
-          content: { type: 'string', description: 'Page content' }
+    tools.push(
+      new this.langchain.DynamicStructuredTool({
+        name: "notion",
+        description: "Manage Notion pages",
+        schema: {
+          type: "object",
+          properties: {
+            action: {
+              type: "string",
+              enum: ["create", "update", "delete"],
+              description: "Action to perform",
+            },
+            title: { type: "string", description: "Page title" },
+            content: { type: "string", description: "Page content" },
+          },
+          required: ["action", "title"],
         },
-        required: ['action', 'title']
-      },
-      func: async (params: any) => {
-        return await this.executeNotionTool(params);
-      }
-    }));
+        func: async (params: any) => {
+          return await this.executeNotionTool(params);
+        },
+      }),
+    );
 
     // Stripe tool
-    tools.push(new this.langchain.DynamicStructuredTool({
-      name: 'stripe',
-      description: 'Process payments',
-      schema: {
-        type: 'object',
-        properties: {
-          action: { type: 'string', enum: ['charge', 'refund'], description: 'Action to perform' },
-          amount: { type: 'number', description: 'Amount in cents' },
-          currency: { type: 'string', description: 'Currency code' }
+    tools.push(
+      new this.langchain.DynamicStructuredTool({
+        name: "stripe",
+        description: "Process payments",
+        schema: {
+          type: "object",
+          properties: {
+            action: {
+              type: "string",
+              enum: ["charge", "refund"],
+              description: "Action to perform",
+            },
+            amount: { type: "number", description: "Amount in cents" },
+            currency: { type: "string", description: "Currency code" },
+          },
+          required: ["action", "amount"],
         },
-        required: ['action', 'amount']
-      },
-      func: async (params: any) => {
-        return await this.executeStripeTool(params);
-      }
-    }));
+        func: async (params: any) => {
+          return await this.executeStripeTool(params);
+        },
+      }),
+    );
 
     // GitHub tool
-    tools.push(new this.langchain.DynamicStructuredTool({
-      name: 'github',
-      description: 'Manage GitHub repositories',
-      schema: {
-        type: 'object',
-        properties: {
-          action: { type: 'string', enum: ['create_issue', 'create_pr'], description: 'Action to perform' },
-          repo: { type: 'string', description: 'Repository name' },
-          title: { type: 'string', description: 'Issue/PR title' }
+    tools.push(
+      new this.langchain.DynamicStructuredTool({
+        name: "github",
+        description: "Manage GitHub repositories",
+        schema: {
+          type: "object",
+          properties: {
+            action: {
+              type: "string",
+              enum: ["create_issue", "create_pr"],
+              description: "Action to perform",
+            },
+            repo: { type: "string", description: "Repository name" },
+            title: { type: "string", description: "Issue/PR title" },
+          },
+          required: ["action", "repo", "title"],
         },
-        required: ['action', 'repo', 'title']
-      },
-      func: async (params: any) => {
-        return await this.executeGitHubTool(params);
-      }
-    }));
+        func: async (params: any) => {
+          return await this.executeGitHubTool(params);
+        },
+      }),
+    );
 
     // Search tool
-    tools.push(new this.langchain.DynamicStructuredTool({
-      name: 'search',
-      description: 'Search the web',
-      schema: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: 'Search query' },
-          max_results: { type: 'number', description: 'Maximum number of results' }
+    tools.push(
+      new this.langchain.DynamicStructuredTool({
+        name: "search",
+        description: "Search the web",
+        schema: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "Search query" },
+            max_results: {
+              type: "number",
+              description: "Maximum number of results",
+            },
+          },
+          required: ["query"],
         },
-        required: ['query']
-      },
-      func: async (params: any) => {
-        return await this.executeSearchTool(params);
-      }
-    }));
+        func: async (params: any) => {
+          return await this.executeSearchTool(params);
+        },
+      }),
+    );
 
     // Fetch tool
-    tools.push(new this.langchain.DynamicStructuredTool({
-      name: 'fetch',
-      description: 'Fetch data from APIs',
-      schema: {
-        type: 'object',
-        properties: {
-          url: { type: 'string', description: 'URL to fetch' },
-          method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP method' }
+    tools.push(
+      new this.langchain.DynamicStructuredTool({
+        name: "fetch",
+        description: "Fetch data from APIs",
+        schema: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "URL to fetch" },
+            method: {
+              type: "string",
+              enum: ["GET", "POST", "PUT", "DELETE"],
+              description: "HTTP method",
+            },
+          },
+          required: ["url"],
         },
-        required: ['url']
-      },
-      func: async (params: any) => {
-        return await this.executeFetchTool(params);
-      }
-    }));
+        func: async (params: any) => {
+          return await this.executeFetchTool(params);
+        },
+      }),
+    );
 
     return tools;
   }
@@ -402,28 +458,30 @@ export class LangChainRunner extends BaseAgentRunner {
       // Ensure required fields
       if (!planData.id) planData.id = this.generateId();
       if (!planData.timestamp) planData.timestamp = new Date().toISOString();
-      if (!planData.expiresAt) planData.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      if (!planData.expiresAt)
+        planData.expiresAt = new Date(
+          Date.now() + 24 * 60 * 60 * 1000,
+        ).toISOString();
 
       return planData as Plan;
-
     } catch (error) {
       // Fallback to basic plan structure
       return {
         id: this.generateId(),
-        tenant: originalJson.tenant || 'acme',
-        journey: originalJson.journey || 'support_triage',
+        tenant: originalJson.tenant || "acme",
+        journey: originalJson.journey || "support_triage",
         steps: [],
         metadata: {
-          version: '1.0.0',
+          version: "1.0.0",
           agent: this.name,
-          model: this.config?.model || 'gpt-4',
+          model: this.config?.model || "gpt-4",
           confidence: 0.5,
-          risk_level: 'medium',
+          risk_level: "medium",
           tags: [],
-          context: originalJson
+          context: originalJson,
         },
         timestamp: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       };
     }
   }
@@ -433,23 +491,23 @@ export class LangChainRunner extends BaseAgentRunner {
    */
   private extractPlanFromText(text: string, originalJson: any): any {
     // This is a simplified parser - in production, use more sophisticated NLP
-    const lines = text.split('\n');
+    const lines = text.split("\n");
     const steps: any[] = [];
-    
+
     for (const line of lines) {
-      if (line.includes('tool:') || line.includes('action:')) {
+      if (line.includes("tool:") || line.includes("action:")) {
         const toolMatch = line.match(/tool:\s*(\w+)/i);
         const actionMatch = line.match(/action:\s*(\w+)/i);
-        
+
         if (toolMatch || actionMatch) {
           const tool = toolMatch ? toolMatch[1] : actionMatch![1];
           steps.push({
             id: this.generateId(),
-            type: 'tool_call',
+            type: "tool_call",
             tool,
-            capability: 'read', // Default capability
-            status: 'pending',
-            timestamp: new Date().toISOString()
+            capability: "read", // Default capability
+            status: "pending",
+            timestamp: new Date().toISOString(),
           });
         }
       }
@@ -457,61 +515,61 @@ export class LangChainRunner extends BaseAgentRunner {
 
     return {
       id: this.generateId(),
-      tenant: originalJson.tenant || 'acme',
-      journey: originalJson.journey || 'support_triage',
+      tenant: originalJson.tenant || "acme",
+      journey: originalJson.journey || "support_triage",
       steps,
       metadata: {
-        version: '1.0.0',
+        version: "1.0.0",
         agent: this.name,
-        model: this.config?.model || 'gpt-4',
+        model: this.config?.model || "gpt-4",
         confidence: 0.5,
-        risk_level: 'medium',
+        risk_level: "medium",
         tags: [],
-        context: originalJson
+        context: originalJson,
       },
       timestamp: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     };
   }
 
   // Tool execution methods (implemented as stubs for now)
   private async executeSlackTool(params: any): Promise<any> {
     // Implement Slack tool execution
-    return { message: 'Slack message sent', params };
+    return { message: "Slack message sent", params };
   }
 
   private async executeEmailTool(params: any): Promise<any> {
     // Implement email tool execution
-    return { message: 'Email sent', params };
+    return { message: "Email sent", params };
   }
 
   private async executeCalendarTool(params: any): Promise<any> {
     // Implement calendar tool execution
-    return { event: 'Calendar event created', params };
+    return { event: "Calendar event created", params };
   }
 
   private async executeNotionTool(params: any): Promise<any> {
     // Implement Notion tool execution
-    return { page: 'Notion page updated', params };
+    return { page: "Notion page updated", params };
   }
 
   private async executeStripeTool(params: any): Promise<any> {
     // Implement Stripe tool execution
-    return { payment: 'Payment processed', params };
+    return { payment: "Payment processed", params };
   }
 
   private async executeGitHubTool(params: any): Promise<any> {
     // Implement GitHub tool execution
-    return { repo: 'GitHub action completed', params };
+    return { repo: "GitHub action completed", params };
   }
 
   private async executeSearchTool(params: any): Promise<any> {
     // Implement search tool execution
-    return { results: 'Search completed', params };
+    return { results: "Search completed", params };
   }
 
   private async executeFetchTool(params: any): Promise<any> {
     // Implement fetch tool execution
-    return { data: 'Data fetched', params };
+    return { data: "Data fetched", params };
   }
 }
