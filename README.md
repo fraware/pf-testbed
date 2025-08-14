@@ -2,7 +2,6 @@
 
 **Enterprise-Grade Testbed for Provability Fabric**
 
-[![CI/CD Pipeline](https://github.com/provability-fabric/pf-testbed/workflows/CI%3ACD%20Pipeline/badge.svg)](https://github.com/provability-fabric/pf-testbed/actions)
 [![Dependency Status](https://img.shields.io/badge/dependencies-up%20to%20date-brightgreen)](https://github.com/provability-fabric/pf-testbed/actions)
 [![Security Status](https://img.shields.io/badge/security-audited-brightgreen)](https://github.com/provability-fabric/pf-testbed/actions)
 [![Platform Support](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue)](https://github.com/provability-fabric/pf-testbed)
@@ -157,7 +156,3 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - **Open Source Community** - Dependencies and tools
 - **Security Researchers** - Vulnerability reporting and testing
 - **Contributors** - Code, documentation, and testing
-
----
-
-**Ready to build the future of provable systems? Start with `make deps` and explore the possibilities!**
