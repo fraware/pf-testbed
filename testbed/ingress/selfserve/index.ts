@@ -654,7 +654,7 @@ export class SelfServeIngress {
   }
 
   private generateMiddlewareExample(type: string): string {
-    const examples = {
+    const examples: Record<string, string> = {
       nodejs: 'console.log("Node.js middleware example");',
       python: 'print("Python middleware example")',
       go: 'fmt.Println("Go middleware example")',
@@ -864,6 +864,9 @@ interface ApiKey {
   status: "active" | "revoked";
   revoked_at: string | null;
 }
+
+// Add missing type definitions
+type SignupData = z.infer<typeof SignupSchema>;
 
 // Validation schemas
 const SignupSchema = z.object({

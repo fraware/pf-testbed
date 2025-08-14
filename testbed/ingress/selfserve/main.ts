@@ -5,7 +5,7 @@ import compression from "compression";
 import { createLogger, format, transports } from "winston";
 import { register, collectDefaultMetrics } from "prom-client";
 import rateLimit from "express-rate-limit";
-import { validationMiddleware } from "./middleware/validation";
+import { ValidationMiddleware } from "./middleware/validation";
 
 // Initialize logger
 const logger = createLogger({
@@ -36,6 +36,11 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, please try again later.",
 });
 
+// Initialize validation middleware
+const validationMiddleware = new ValidationMiddleware(
+  process.env.PF_SIGNATURE_SECRET || "default-secret-key-change-in-production"
+);
+
 // Middleware
 app.use(helmet());
 app.use(cors());
@@ -44,7 +49,7 @@ app.use(express.json());
 app.use(limiter);
 
 // Apply validation middleware to all routes
-app.use(validationMiddleware);
+app.use(validationMiddleware.validateRequest);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

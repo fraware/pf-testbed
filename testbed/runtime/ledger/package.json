@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/safety_case.js",
+    "start-simple": "ts-node simple_ledger.ts",
     "dev": "ts-node safety_case.ts",
     "test": "jest",
     "lint": "eslint . --ext .ts"
@@ -25,7 +26,9 @@
     "compression": "^1.7.4",
     "winston": "^3.11.0",
     "prom-client": "^15.0.0",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "apollo-server-express": "^3.12.1",
+    "graphql": "^16.8.1"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

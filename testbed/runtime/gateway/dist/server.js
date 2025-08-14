@@ -1,236 +1,80 @@
 "use strict";
-var __importDefault =
-  (this && this.__importDefault) ||
-  function (mod) {
-    return mod && mod.__esModule ? mod : { default: mod };
-  };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GatewayServer = void 0;
+exports.port = exports.app = void 0;
 const express_1 = __importDefault(require("express"));
-const cors_1 = __importDefault(require("cors"));
-const express_2 = require("express");
-const unified_gateway_1 = require("./unified-gateway");
-const metrics_1 = require("./metrics");
-const observability_1 = require("./observability");
-class GatewayServer {
-  constructor(config) {
-    this.config = config;
-    this.app = (0, express_1.default)();
-    this.gateway = new unified_gateway_1.UnifiedGateway(config);
-    this.metrics = new metrics_1.MetricsCollector();
-    this.observability = new observability_1.ObservabilityCollector();
-    this.setupMiddleware();
-    this.setupRoutes();
-  }
-  setupMiddleware() {
-    // CORS
-    this.app.use(
-      (0, cors_1.default)({
-        origin: this.config.cors_origins,
-        credentials: true,
-      }),
-    );
-    // JSON parsing
-    this.app.use((0, express_2.json)({ limit: "10mb" }));
-    // Request logging
-    this.app.use((req, res, next) => {
-      const startTime = Date.now();
-      this.observability.recordRequestStart(req.path, req.method);
-      res.on("finish", () => {
-        const duration = Date.now() - startTime;
-        this.observability.recordRequestComplete(
-          req.path,
-          req.method,
-          res.statusCode,
-          duration,
-        );
-      });
-      next();
-    });
-    // Rate limiting
-    this.app.use((req, res, next) => {
-      // Simple in-memory rate limiting
-      // In production, use Redis or similar
-      const clientId = req.ip || "unknown";
-      const now = Date.now();
-      const windowStart = now - this.config.rate_limit.window_ms;
-      // This is a simplified implementation
-      // In production, implement proper rate limiting
-      next();
-    });
-  }
-  setupRoutes() {
-    // Health check
-    this.app.get("/health", async (req, res) => {
-      try {
-        const health = await this.gateway.getHealthStatus();
-        const allHealthy = Object.values(health).every((h) => h);
-        res.status(allHealthy ? 200 : 503).json({
-          status: allHealthy ? "healthy" : "unhealthy",
-          timestamp: new Date().toISOString(),
-          stacks: health,
-        });
-      } catch (error) {
-        res.status(500).json({
-          status: "error",
-          error: error instanceof Error ? error.message : "Unknown error",
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
-    // Execute plan on specific stack
-    this.app.post("/execute/:stack", async (req, res) => {
-      try {
-        const { stack } = req.params;
-        const { plan, context } = req.body;
-        if (!plan || !context) {
-          return res.status(400).json({
-            error: "Missing required fields: plan and context",
-            timestamp: new Date().toISOString(),
-          });
-        }
-        // Validate context
-        if (!context.tenant || !context.session_id || !context.request_id) {
-          return res.status(400).json({
-            error: "Invalid context: missing tenant, session_id, or request_id",
-            timestamp: new Date().toISOString(),
-          });
-        }
-        const result = await this.gateway.executePlan(stack, plan, context);
-        res.status(result.success ? 200 : 500).json(result);
-      } catch (error) {
-        res.status(500).json({
-          error: error instanceof Error ? error.message : "Unknown error",
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
-    // Get metrics for all stacks
-    this.app.get("/metrics", async (req, res) => {
-      try {
-        const metrics = await this.gateway.getStackMetrics();
-        res.json({
-          timestamp: new Date().toISOString(),
-          metrics,
-        });
-      } catch (error) {
-        res.status(500).json({
-          error: error instanceof Error ? error.message : "Unknown error",
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
-    // Get metrics for specific stack
-    this.app.get("/metrics/:stack", async (req, res) => {
-      try {
-        const { stack } = req.params;
-        const metrics = await this.gateway.getStackMetrics();
-        if (!metrics[stack]) {
-          return res.status(404).json({
-            error: `Stack ${stack} not found`,
-            timestamp: new Date().toISOString(),
-          });
-        }
-        res.json({
-          stack,
-          timestamp: new Date().toISOString(),
-          ...metrics[stack],
-        });
-      } catch (error) {
-        res.status(500).json({
-          error: error instanceof Error ? error.message : "Unknown error",
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
-    // Export traces for specific journey
-    this.app.get("/traces/:journey/:tenant", async (req, res) => {
-      try {
-        const { journey, tenant } = req.params;
-        const traces = await this.gateway.exportJourneyTraces(journey, tenant);
-        res.json({
-          journey,
-          tenant,
-          count: traces.length,
-          traces,
-          timestamp: new Date().toISOString(),
-        });
-      } catch (error) {
-        res.status(500).json({
-          error: error instanceof Error ? error.message : "Unknown error",
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
-    // Get gateway configuration
-    this.app.get("/config", (req, res) => {
-      const config = this.gateway.getConfig();
-      const enforceMode = this.gateway.isEnforceMode();
-      res.json({
-        ...config,
-        enforce_mode: enforceMode,
+const abac_engine_1 = require("./abac-engine");
+const app = (0, express_1.default)();
+exports.app = app;
+const port = process.env.GATEWAY_PORT || 3000;
+exports.port = port;
+// Initialize ABAC engine
+const abacEngine = new abac_engine_1.ABACEngine();
+// Middleware
+app.use(express_1.default.json());
+app.use(express_1.default.urlencoded({ extended: true }));
+// Health check endpoint
+app.get('/health', (req, res) => {
+    const healthResponse = {
+        status: 'healthy',
         timestamp: new Date().toISOString(),
-      });
-    });
-    // Get observability data
-    this.app.get("/observability", (req, res) => {
-      try {
-        const data = this.observability.getSummary();
-        res.json({
-          timestamp: new Date().toISOString(),
-          ...data,
+        uptime: process.uptime()
+    };
+    res.json(healthResponse);
+});
+// ABAC Query endpoint
+app.post('/api/v1/query', async (req, res) => {
+    try {
+        const request = req.body;
+        // Validate required fields
+        if (!request.tenant || !request.subject_id || !request.subject_roles || !request.query) {
+            return res.status(400).json({
+                error: 'Missing required fields',
+                required: ['tenant', 'subject_id', 'subject_roles', 'query']
+            });
+        }
+        // Evaluate access using ABAC engine
+        const response = await abacEngine.evaluateAccess(request);
+        res.status(200).json(response);
+    }
+    catch (error) {
+        console.error('ABAC query error:', error);
+        res.status(403).json({
+            error: 'Access denied',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
         });
-      } catch (error) {
-        res.status(500).json({
-          error: error instanceof Error ? error.message : "Unknown error",
-          timestamp: new Date().toISOString(),
-        });
-      }
+    }
+});
+// Root endpoint
+app.get('/', (req, res) => {
+    res.json({
+        service: 'pf-testbed-gateway',
+        version: '1.0.0',
+        endpoints: {
+            health: '/health',
+            query: '/api/v1/query'
+        },
+        timestamp: new Date().toISOString()
     });
-    // Error handling middleware
-    this.app.use((error, req, res, next) => {
-      console.error("Unhandled error:", error);
-      res.status(500).json({
-        error: "Internal server error",
-        timestamp: new Date().toISOString(),
-      });
-    });
-    // 404 handler
-    this.app.use("*", (req, res) => {
-      res.status(404).json({
-        error: "Endpoint not found",
+});
+// 404 handler
+app.use('*', (req, res) => {
+    res.status(404).json({
+        error: 'Endpoint not found',
         path: req.originalUrl,
-        timestamp: new Date().toISOString(),
-      });
+        timestamp: new Date().toISOString()
     });
-  }
-  /**
-   * Start the server
-   */
-  start() {
-    const port = this.config.port;
-    const host = this.config.host;
-    this.app.listen(port, host, () => {
-      console.log(`🚀 Gateway server started on ${host}:${port}`);
-      console.log(`📊 Metrics available at http://${host}:${port}/metrics`);
-      console.log(`🔍 Health check at http://${host}:${port}/health`);
-      console.log(
-        `⚙️  Enforce mode: ${this.gateway.isEnforceMode() ? "ENABLED" : "DISABLED"}`,
-      );
+});
+// Error handler
+app.use((error, req, res, next) => {
+    console.error('Unhandled error:', error);
+    res.status(500).json({
+        error: 'Internal server error',
+        message: 'An unexpected error occurred',
+        timestamp: new Date().toISOString()
     });
-  }
-  /**
-   * Get the Express app instance
-   */
-  getApp() {
-    return this.app;
-  }
-  /**
-   * Get the gateway instance
-   */
-  getGateway() {
-    return this.gateway;
-  }
-}
-exports.GatewayServer = GatewayServer;
+});
 //# sourceMappingURL=server.js.map

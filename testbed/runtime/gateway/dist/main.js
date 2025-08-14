@@ -1,162 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.main = main;
-exports.initializeAgents = initializeAgents;
 const server_1 = require("./server");
-const runner_1 = require("../agents/openai_assistants/runner");
-const runner_2 = require("../agents/langchain/runner");
-const runner_3 = require("../agents/langgraph/runner");
-const runner_4 = require("../agents/dspy/runner");
-// Default configuration
-const defaultConfig = {
-  port: parseInt(process.env.GATEWAY_PORT || "3000"),
-  host: process.env.GATEWAY_HOST || "0.0.0.0",
-  cors_origins: process.env.CORS_ORIGINS?.split(",") || [
-    "http://localhost:3000",
-    "http://localhost:3001",
-  ],
-  rate_limit: {
-    window_ms: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000"),
-    max_requests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100"),
-  },
-  auth: {
-    enabled: process.env.AUTH_ENABLED === "true",
-    jwt_secret: process.env.JWT_SECRET,
-    api_keys: process.env.API_KEYS?.split(","),
-  },
-  monitoring: {
-    enabled: process.env.MONITORING_ENABLED !== "false",
-    metrics_port: parseInt(process.env.METRICS_PORT || "9090"),
-    health_check_interval: parseInt(
-      process.env.HEALTH_CHECK_INTERVAL || "30000",
-    ),
-  },
+const startServer = () => {
+    try {
+        server_1.app.listen(server_1.port, () => {
+            console.log(`🚀 ABAC Gateway server started on port ${server_1.port}`);
+            console.log(`🔍 Health check at http://localhost:${server_1.port}/health`);
+            console.log(`🔐 ABAC Query endpoint at http://localhost:${server_1.port}/api/v1/query`);
+            console.log(`📊 Server info at http://localhost:${server_1.port}/`);
+        });
+    }
+    catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
 };
-/**
- * Initialize all agent runners
- */
-async function initializeAgents(gateway) {
-  try {
-    console.log("🤖 Initializing agent runners...");
-    // OpenAI Assistants
-    try {
-      const openaiRunner = new runner_1.OpenAIAssistantsRunner();
-      await openaiRunner.configure({
-        model: process.env.OPENAI_MODEL || "gpt-4",
-        provider: "openai",
-        api_key: process.env.OPENAI_API_KEY,
-        timeout: parseInt(process.env.OPENAI_TIMEOUT || "30000"),
-        max_retries: parseInt(process.env.OPENAI_MAX_RETRIES || "3"),
-        shadow_mode: process.env.PF_ENFORCE !== "true",
-        enforce_policies: process.env.PF_ENFORCE === "true",
-      });
-      gateway.registerAgent("openai-assistants", openaiRunner);
-      console.log("✅ OpenAI Assistants runner initialized");
-    } catch (error) {
-      console.warn("⚠️  OpenAI Assistants runner failed to initialize:", error);
-    }
-    // LangChain
-    try {
-      const langchainRunner = new runner_2.LangChainRunner();
-      await langchainRunner.configure({
-        model: process.env.LANGCHAIN_MODEL || "gpt-4",
-        provider: "langchain",
-        api_key: process.env.LANGCHAIN_API_KEY,
-        timeout: parseInt(process.env.LANGCHAIN_TIMEOUT || "30000"),
-        max_retries: parseInt(process.env.LANGCHAIN_MAX_RETRIES || "3"),
-        shadow_mode: process.env.PF_ENFORCE !== "true",
-        enforce_policies: process.env.PF_ENFORCE === "true",
-      });
-      gateway.registerAgent("langchain", langchainRunner);
-      console.log("✅ LangChain runner initialized");
-    } catch (error) {
-      console.warn("⚠️  LangChain runner failed to initialize:", error);
-    }
-    // LangGraph
-    try {
-      const langgraphRunner = new runner_3.LangGraphRunner();
-      await langgraphRunner.configure({
-        model: process.env.LANGGRAPH_MODEL || "gpt-4",
-        provider: "langgraph",
-        api_key: process.env.LANGGRAPH_API_KEY,
-        timeout: parseInt(process.env.LANGGRAPH_TIMEOUT || "30000"),
-        max_retries: parseInt(process.env.LANGGRAPH_MAX_RETRIES || "3"),
-        shadow_mode: process.env.PF_ENFORCE !== "true",
-        enforce_policies: process.env.PF_ENFORCE === "true",
-      });
-      gateway.registerAgent("langgraph", langgraphRunner);
-      console.log("✅ LangGraph runner initialized");
-    } catch (error) {
-      console.warn("⚠️  LangGraph runner failed to initialize:", error);
-    }
-    // DSPy
-    try {
-      const dspyRunner = new runner_4.DSPyRunner();
-      await dspyRunner.configure({
-        model: process.env.DSPY_MODEL || "gpt-4",
-        provider: "dspy",
-        api_key: process.env.DSPY_API_KEY,
-        timeout: parseInt(process.env.DSPY_TIMEOUT || "30000"),
-        max_retries: parseInt(process.env.DSPY_MAX_RETRIES || "3"),
-        shadow_mode: process.env.PF_ENFORCE !== "true",
-        enforce_policies: process.env.PF_ENFORCE === "true",
-      });
-      gateway.registerAgent("dspy", dspyRunner);
-      console.log("✅ DSPy runner initialized");
-    } catch (error) {
-      console.warn("⚠️  DSPy runner failed to initialize:", error);
-    }
-    console.log("🎯 Agent initialization complete");
-  } catch (error) {
-    console.error("❌ Failed to initialize agents:", error);
-    throw error;
-  }
-}
-/**
- * Main function
- */
-async function main() {
-  try {
-    console.log("🚀 Starting Provability Fabric Testbed Gateway...");
-    console.log(`⚙️  Configuration:`, {
-      port: defaultConfig.port,
-      host: defaultConfig.host,
-      enforce_mode: process.env.PF_ENFORCE === "true" ? "ENABLED" : "DISABLED",
-      monitoring: defaultConfig.monitoring.enabled ? "ENABLED" : "DISABLED",
-    });
-    // Create and start server
-    const server = new server_1.GatewayServer(defaultConfig);
-    // Initialize agents
-    await initializeAgents(server.getGateway());
-    // Start server
-    server.start();
-    console.log("🎉 Gateway startup complete!");
-    console.log("📚 Available endpoints:");
-    console.log("   POST /execute/:stack - Execute plan on specific stack");
-    console.log("   GET  /metrics       - Get metrics for all stacks");
-    console.log("   GET  /health        - Health check");
-    console.log("   GET  /traces/:journey/:tenant - Export traces");
-    console.log("   GET  /config        - Gateway configuration");
-    console.log("   GET  /observability - Observability data");
-  } catch (error) {
-    console.error("💥 Failed to start gateway:", error);
-    process.exit(1);
-  }
-}
 // Handle graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("🛑 Received SIGTERM, shutting down gracefully...");
-  process.exit(0);
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    process.exit(0);
 });
-process.on("SIGINT", () => {
-  console.log("🛑 Received SIGINT, shutting down gracefully...");
-  process.exit(0);
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    process.exit(0);
 });
-// Start the application
-if (require.main === module) {
-  main().catch((error) => {
-    console.error("💥 Unhandled error in main:", error);
-    process.exit(1);
-  });
-}
+startServer();
 //# sourceMappingURL=main.js.map

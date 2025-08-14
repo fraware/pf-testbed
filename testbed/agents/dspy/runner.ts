@@ -1,10 +1,10 @@
-import { BaseAgentRunner } from "../../runtime/gateway/src/base-runner";
+import { BaseAgentRunner } from "../../../runtime/gateway/src/base-runner";
 import {
   Plan,
   ToolCall,
   ToolResult,
   AgentConfig,
-} from "../../runtime/gateway/src/types";
+} from "../../../runtime/gateway/src/types";
 
 /**
  * DSPy Agent Runner

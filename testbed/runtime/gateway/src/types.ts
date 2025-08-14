@@ -163,7 +163,7 @@ export interface ExecutionResult {
   steps_failed: number;
   final_result?: any;
   error?: string;
-  traces: ToolTrace[];
+  traces: any[]; // Allow both ToolTrace and NormalizedTrace
   receipts: AccessReceipt[];
   timestamp: string;
 }
@@ -233,3 +233,62 @@ export const SUPPORTED_TOOLS = [
 export const CAPABILITY_SCOPES = ["read", "write", "delete", "admin"] as const;
 
 export const RISK_LEVELS = ["low", "medium", "high", "critical"] as const;
+
+export interface HealthResponse {
+  status: string;
+  timestamp: string;
+  uptime: number;
+}
+
+export interface ABACRequest {
+  tenant: string;
+  subject_id: string;
+  subject_roles: string[];
+  query: string;
+  test_id?: string;
+}
+
+export interface ABACResponse {
+  results: ABACResult[];
+  metadata: {
+    query_id: string;
+    tenant: string;
+    timestamp: string;
+    policy_applied: string;
+  };
+}
+
+export interface ABACResult {
+  id: string;
+  tenant: string;
+  labels: string[];
+  data: Record<string, any>;
+  access_level: 'read' | 'write' | 'admin';
+}
+
+export interface ABACPolicy {
+  id: string;
+  name: string;
+  description: string;
+  rules: ABACRule[];
+}
+
+export interface ABACRule {
+  id: string;
+  condition: string;
+  effect: 'allow' | 'deny';
+  priority: number;
+}
+
+export interface TenantContext {
+  tenant_id: string;
+  allowed_roles: string[];
+  data_access_level: 'isolated' | 'shared' | 'public';
+}
+
+export interface SubjectContext {
+  subject_id: string;
+  roles: string[];
+  attributes: Record<string, any>;
+  tenant: string;
+}

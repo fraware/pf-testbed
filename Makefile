@@ -14,7 +14,7 @@ ifeq ($(OS),Windows_NT)
     PIP := python -m pip
     NPM := npm
     RM := rmdir /s /q
-    MKDIR := mkdir
+    MKDIR := if not exist
     CP := copy
     SHELL := cmd
     VENV_ACTIVATE := .venv\Scripts\activate
@@ -101,7 +101,11 @@ help: ## Show this help message
 # Dependency Management
 deps: ## Install all dependencies
 	@echo "📦 Installing dependencies..."
+ifeq ($(OS),Windows_NT)
+	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
+else
 	@$(MKDIR) $(BUILD_DIR)
+endif
 	@$(PYTHON) scripts/manage-deps.py --install
 	@echo "✅ Dependencies installed successfully"
 
@@ -213,7 +217,7 @@ soak: deps ## Load testing and performance validation
 
 redteam: deps ## Security testing and adversarial validation
 	@echo "🔴 Running redteam tests..."
-	@cd external/provability-fabric/tests/redteam && $(PYTHON) redteam_runner.py
+	@cd external/provability-fabric/tests/redteam && $(PYTHON) redteam_runner.py --kube-config ../../../../kubeconfig-kind.yaml --cases-dir cases
 	@echo "✅ Redteam testing completed"
 
 evidence: deps ## Generate evidence pack export

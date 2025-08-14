@@ -1,19 +1,13 @@
 import {
   AgentRunner,
   Plan,
-  PlanStep,
-  ToolCall,
-  ToolResult,
-  VerificationResult,
-  AgentConfig,
-  AgentStatus,
   ExecutionContext,
   ExecutionResult,
   GatewayConfig,
+  AccessReceipt,
 } from "./types";
-import { BaseAgentRunner } from "./base-runner";
-import { MetricsCollector } from "./metrics";
-import { ObservabilityCollector } from "./observability";
+import { TestbedMetrics } from "./metrics";
+
 
 // Unified trace export schema
 export interface NormalizedTrace {
@@ -22,7 +16,7 @@ export interface NormalizedTrace {
   journey: string;
   tenant: string;
   steps: NormalizedStep[];
-  receipts: string[];
+  receipts: AccessReceipt[];
   cert_id: string;
   timings: {
     plan_start: string;
@@ -43,8 +37,8 @@ export interface NormalizedTrace {
 export interface NormalizedStep {
   id: string;
   type: string;
-  tool?: string;
-  capability?: string;
+  tool: string;
+  capability: string;
   status: string;
   duration_ms: number;
   timestamp: string;
@@ -58,16 +52,14 @@ export interface NormalizedStep {
  */
 export class UnifiedGateway {
   private agents: Map<string, AgentRunner> = new Map();
-  private metrics: MetricsCollector;
-  private observability: ObservabilityCollector;
+  private metrics: TestbedMetrics;
   private config: GatewayConfig;
   private enforceMode: boolean;
 
   constructor(config: GatewayConfig) {
     this.config = config;
-    this.metrics = new MetricsCollector();
-    this.observability = new ObservabilityCollector();
-    this.enforceMode = process.env.PF_ENFORCE === "true";
+    this.metrics = new TestbedMetrics();
+    this.enforceMode = process.env["PF_ENFORCE"] === "true";
   }
 
   /**
@@ -96,8 +88,7 @@ export class UnifiedGateway {
 
     try {
       // Record execution start
-      this.metrics.recordExecutionStart(stack, plan.journey, plan.tenant);
-      this.observability.recordPlanStart(plan.id, stack, context);
+      this.metrics.recordPlanExecution(plan.tenant, plan.journey, "started");
 
       // Verify plan
       const verification = await agent.verifyPlan(plan);
@@ -112,13 +103,7 @@ export class UnifiedGateway {
 
       // Record execution completion
       const executionTime = Date.now() - startTime;
-      this.metrics.recordExecutionComplete(
-        stack,
-        plan.journey,
-        plan.tenant,
-        executionTime,
-      );
-      this.observability.recordPlanComplete(plan.id, executionTime);
+      this.metrics.recordPlanExecution(plan.tenant, plan.journey, "completed");
 
       // Generate normalized trace
       const trace = await this.generateNormalizedTrace(
@@ -139,18 +124,27 @@ export class UnifiedGateway {
           .length,
         final_result: executedPlan,
         traces: [trace],
-        receipts: verification.receipts.map((r) => r.id),
+        receipts: verification.receipts.map((r) => ({
+          id: r.id,
+          tenant: plan.tenant,
+          subject: "unknown",
+          shard: "default",
+          query_hash: "unknown",
+          result_hash: "unknown",
+          nonce: "unknown",
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          signature: "unknown"
+        })),
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      this.metrics.recordExecutionError(
-        stack,
-        plan.journey,
+      this.metrics.recordError(
         plan.tenant,
-        error,
+        plan.journey,
+        "execution_error",
+        "high"
       );
-      this.observability.recordPlanError(plan.id, error, executionTime);
 
       return {
         success: false,
@@ -195,17 +189,27 @@ export class UnifiedGateway {
       steps: plan.steps.map((step) => ({
         id: step.id,
         type: step.type,
-        tool: step.tool,
-        capability: step.capability,
+        tool: step.tool || "unknown",
+        capability: step.capability || "unknown",
         status: step.status,
         duration_ms: step.duration || 0,
         timestamp: step.timestamp,
         result: step.result,
-        error: step.error,
+        error: step.error || "",
       })),
       receipts: plan.steps
         .filter((s) => s.type === "retrieval" && s.receipt)
-        .map((s) => s.receipt!),
+        .map((s) => ({
+          id: s.receipt!,
+          tenant: plan.tenant,
+          subject: "unknown",
+          shard: "default",
+          query_hash: "unknown",
+          result_hash: "unknown",
+          nonce: "unknown",
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          signature: "unknown"
+        })),
       cert_id: certId,
       timings: {
         plan_start: plan.timestamp,
@@ -252,7 +256,7 @@ export class UnifiedGateway {
     for (const [stack, agent] of this.agents) {
       try {
         const status = await agent.getStatus();
-        const stackMetrics = this.metrics.getStackMetrics(stack);
+        const stackMetrics = this.metrics.getMetrics();
 
         metrics[stack] = {
           status,
@@ -292,8 +296,8 @@ export class UnifiedGateway {
    * Export all traces for a specific journey across all stacks
    */
   async exportJourneyTraces(
-    journey: string,
-    tenant: string,
+    _journey: string,
+    _tenant: string,
   ): Promise<NormalizedTrace[]> {
     const traces: NormalizedTrace[] = [];
 

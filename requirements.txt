@@ -7,16 +7,16 @@ pytest-mock==3.12.0
 pytest-asyncio==0.21.1
 
 # Data processing and analysis
-pandas==2.1.4
-numpy==1.25.2
-pyyaml==6.0.1
-jsonschema==4.20.0
+pandas>=2.2.0
+numpy>=1.26.0
+pyyaml>=6.0.1
+jsonschema>=4.20.0
 
 # Security and validation
-cryptography==41.0.8
-pyjwt==2.8.0
-passlib==1.7.4
-bcrypt==4.1.2
+cryptography>=45.0.0
+pyjwt>=2.8.0
+passlib>=1.7.4
+bcrypt>=4.1.2
 
 # Monitoring and observability
 prometheus-client==0.19.0
@@ -24,10 +24,10 @@ structlog==23.2.0
 python-json-logger==2.0.7
 
 # API and web framework
-fastapi==0.104.1
-uvicorn==0.24.0
-httpx==0.25.2
-websockets==12.0
+fastapi>=0.104.1
+uvicorn>=0.24.0
+httpx>=0.25.2
+websockets>=12.0
 
 # Testing and quality
 black==23.11.0

@@ -13,6 +13,7 @@ import {
   ToolExecutionError,
   SUPPORTED_JOURNEYS,
   SUPPORTED_TOOLS,
+  AccessReceipt,
 } from "./types";
 
 /**
@@ -54,7 +55,7 @@ export abstract class BaseAgentRunner implements AgentRunner {
   async verifyPlan(plan: Plan): Promise<VerificationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
-    const receipts: string[] = [];
+    const receipts: AccessReceipt[] = [];
 
     try {
       // Validate journey
