@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provability Fabric Testbed Report</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background-color: var(--background-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--primary-color), #1d4ed8);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metadata-item {
+            background: var(--card-background);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .metadata-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .metadata-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .section {
+            background: var(--card-background);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .section h2 {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .metric-card {
+            background: var(--background-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-unit {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-success {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .comparison-table th {
+            background-color: var(--background-color);
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .comparison-table tr:hover {
+            background-color: var(--background-color);
+        }
+
+        .certification-item {
+            background: var(--background-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .certification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .certification-id {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .certification-type {
+            background: var(--secondary-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .screenshot-container {
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .screenshot-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .validation-section {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 1px solid #0ea5e9;
+        }
+
+        .validation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .validation-item {
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .validation-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .metadata {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-container {
+            height: 300px;
+            margin: 1rem 0;
+            background: var(--background-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-placeholder {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Provability Fabric Testbed Report</h1>
+            <div class="subtitle">Comprehensive Performance, Security, and Compliance Analysis</div>
+            <div style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">
+                Generated: {{ generated_at }}
+            </div>
+        </div>
+
+        <!-- Metadata Section -->
+        <div class="metadata">
+            <div class="metadata-item">
+                <div class="metadata-label">Testbed ID</div>
+                <div class="metadata-value">{{ report.metadata.testbed_id }}</div>
+            </div>
+            <div class="metadata-item">
+                <div class="metadata-label">Version</div>
+                <div class="metadata-value">{{ report.metadata.version }}</div>
+            </div>
+            <div class="metadata-item">
+                <div class="metadata-label">Generated At</div>
+                <div class="metadata-value">{{ report.metadata.generated_at[:19] }}</div>
+            </div>
+            <div class="metadata-item">
+                <div class="metadata-label">Time Range</div>
+                <div class="metadata-value">{{ config.time_range_hours }}h</div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics Section -->
+        <div class="section">
+            <h2>🚀 Performance Metrics</h2>
+            <div class="metrics-grid">
+                {% if report.metrics.performance %}
+                <div class="metric-card">
+                    <div class="metric-label">P95 Latency</div>
+                    <div class="metric-value">{{ "%.3f"|format(report.metrics.performance.latency_p95) }}</div>
+                    <div class="metric-unit">seconds</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">P99 Latency</div>
+                    <div class="metric-value">{{ "%.3f"|format(report.metrics.performance.latency_p99) }}</div>
+                    <div class="metric-unit">seconds</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Throughput</div>
+                    <div class="metric-value">{{ "%.0f"|format(report.metrics.performance.throughput) }}</div>
+                    <div class="metric-unit">requests/second</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Error Rate</div>
+                    <div class="metric-value">{{ "%.2f"|format(report.metrics.performance.error_rate * 100) }}%</div>
+                    <div class="metric-unit">of total requests</div>
+                </div>
+                {% else %}
+                <div class="metric-card">
+                    <div class="metric-label">Performance Data</div>
+                    <div class="metric-value">N/A</div>
+                    <div class="metric-unit">Data not available</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Security Metrics Section -->
+        <div class="section">
+            <h2>🔒 Security Metrics</h2>
+            <div class="metrics-grid">
+                {% if report.metrics.security %}
+                <div class="metric-card">
+                    <div class="metric-label">Block Rate</div>
+                    <div class="metric-value">{{ "%.1f"|format(report.metrics.security.block_rate * 100) }}%</div>
+                    <div class="metric-unit">of malicious requests</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Cross-Tenant Interactions</div>
+                    <div class="metric-value">{{ report.metrics.security.cross_tenant_interactions }}</div>
+                    <div class="metric-unit">detected</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Data Leaks</div>
+                    <div class="metric-value">{{ report.metrics.security.data_leaks }}</div>
+                    <div class="metric-unit">prevented</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Honeytoken Alerts</div>
+                    <div class="metric-value">{{ report.metrics.security.honeytoken_alerts }}</div>
+                    <div class="metric-unit">triggered</div>
+                </div>
+                {% else %}
+                <div class="metric-card">
+                    <div class="metric-label">Security Data</div>
+                    <div class="metric-value">N/A</div>
+                    <div class="metric-unit">Data not available</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Cost Metrics Section -->
+        <div class="section">
+            <h2>💰 Cost Analysis</h2>
+            <div class="metrics-grid">
+                {% if report.metrics.cost %}
+                <div class="metric-card">
+                    <div class="metric-label">Cost per 1K Transactions</div>
+                    <div class="metric-value">${{ "%.4f"|format(report.metrics.cost.cost_per_1k_transactions) }}</div>
+                    <div class="metric-unit">USD</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Transactions</div>
+                    <div class="metric-value">{{ report.metrics.cost.total_transactions }}</div>
+                    <div class="metric-unit">processed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Cost</div>
+                    <div class="metric-value">${{ "%.2f"|format(report.metrics.cost.total_cost) }}</div>
+                    <div class="metric-unit">USD</div>
+                </div>
+                {% else %}
+                <div class="metric-card">
+                    <div class="metric-label">Cost Data</div>
+                    <div class="metric-value">N/A</div>
+                    <div class="metric-unit">Data not available</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ART Comparison Section -->
+        {% if report.art_comparison %}
+        <div class="section">
+            <h2>📊 ART Harness Comparison</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Testbed Value</th>
+                        <th>ART Value</th>
+                        <th>Delta</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for comparison in report.art_comparison %}
+                    <tr>
+                        <td>{{ comparison.metric }}</td>
+                        <td>{{ comparison.testbed_value }}</td>
+                        <td>{{ comparison.art_value }}</td>
+                        <td>{{ "%.3f"|format(comparison.delta) }}</td>
+                        <td>
+                            <span class="status-badge status-{{ 'success' if comparison.status == 'better' else 'warning' if comparison.status == 'similar' else 'danger' }}">
+                                {{ comparison.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Certifications Section -->
+        {% if report.certifications %}
+        <div class="section">
+            <h2>🏆 Certifications & Attestations</h2>
+            {% for cert in report.certifications %}
+            <div class="certification-item">
+                <div class="certification-header">
+                    <span class="certification-id">{{ cert.id }}</span>
+                    <span class="certification-type">{{ cert.type }}</span>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Issuer:</strong> {{ cert.issuer }} | 
+                    <strong>Issued:</strong> {{ cert.issued_at[:10] }} | 
+                    <strong>Expires:</strong> {{ cert.expires_at[:10] }}
+                </div>
+                <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                    <strong>Status:</strong> 
+                    <span class="status-badge status-{{ 'success' if cert.validation_status == 'valid' else 'danger' }}">
+                        {{ cert.validation_status }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Grafana Screenshots Section -->
+        {% if report.grafana_screenshots %}
+        <div class="section">
+            <h2>📈 Grafana Dashboards</h2>
+            {% for screenshot in report.grafana_screenshots %}
+            <div style="margin-bottom: 2rem;">
+                <h3 style="color: var(--secondary-color); margin-bottom: 1rem;">{{ screenshot.dashboard_name }}</h3>
+                <div class="screenshot-container">
+                    <img src="data:image/{{ screenshot.image_format.lower() }};base64,{{ screenshot.image_data }}" 
+                         alt="{{ screenshot.dashboard_name }} Dashboard"
+                         title="Captured at {{ screenshot.timestamp }}">
+                </div>
+                <div style="text-align: center; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                    Captured: {{ screenshot.timestamp[:19] }} | Checksum: {{ screenshot.checksum[:16] }}...
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Validation Section -->
+        <div class="section validation-section">
+            <h2>✅ Report Validation</h2>
+            <div class="validation-grid">
+                <div class="validation-item">
+                    <div class="validation-icon">🔍</div>
+                    <div class="metadata-label">Schema Valid</div>
+                    <div class="metadata-value">
+                        <span class="status-badge status-{{ 'success' if report.validation.schema_valid else 'danger' }}">
+                            {{ 'Pass' if report.validation.schema_valid else 'Fail' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-icon">📦</div>
+                    <div class="metadata-label">Artifacts Present</div>
+                    <div class="metadata-value">
+                        <span class="status-badge status-{{ 'success' if report.validation.artifacts_present else 'danger' }}">
+                            {{ 'Complete' if report.validation.artifacts_present else 'Incomplete' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="validation-item">
+                    <div class="validation-icon">🔐</div>
+                    <div class="metadata-label">Checksum</div>
+                    <div class="metadata-value" style="font-size: 0.75rem; word-break: break-all;">
+                        {{ report.validation.checksum[:16] }}...
+                    </div>
+                </div>
+            </div>
+            
+            {% if report.validation.missing_artifacts %}
+            <div style="margin-top: 1rem; padding: 1rem; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca;">
+                <strong>⚠️ Missing Artifacts:</strong>
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    {% for artifact in report.validation.missing_artifacts %}
+                    <li>{{ artifact }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            {% if report.validation.validation_errors %}
+            <div style="margin-top: 1rem; padding: 1rem; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca;">
+                <strong>❌ Validation Errors:</strong>
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    {% for error in report.validation.validation_errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>This report was automatically generated by the Provability Fabric Testbed Reporter</p>
+            <p>For questions or support, please contact the testbed team</p>
+        </div>
+    </div>
+</body>
+</html>

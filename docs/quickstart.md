@@ -244,10 +244,3 @@ make deps-report
 # Run diagnostics
 python scripts/manage-deps.py --report
 ```
-
-
----
-
-**Ready to explore? Run `make help` to see all available commands!**
-
-**Need help? Check the troubleshooting section or open a GitHub issue.**
