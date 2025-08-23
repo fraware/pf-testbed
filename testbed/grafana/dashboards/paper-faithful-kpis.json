@@ -1,0 +1,665 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Provability Fabric - Paper-Faithful KPIs",
+    "tags": ["provability-fabric", "testbed", "paper-metrics"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Decision Path Flow Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "decision_path_phases_total{phase=\"observe\"}",
+            "legendFormat": "Observe"
+          },
+          {
+            "expr": "decision_path_phases_total{phase=\"retrieve\"}",
+            "legendFormat": "Retrieve"
+          },
+          {
+            "expr": "decision_path_phases_total{phase=\"plan\"}",
+            "legendFormat": "Plan"
+          },
+          {
+            "expr": "decision_path_phases_total{phase=\"kernel\"}",
+            "legendFormat": "Kernel"
+          },
+          {
+            "expr": "decision_path_phases_total{phase=\"tool_broker\"}",
+            "legendFormat": "Tool Broker"
+          },
+          {
+            "expr": "decision_path_phases_total{phase=\"egress\"}",
+            "legendFormat": "Egress"
+          },
+          {
+            "expr": "decision_path_phases_total{phase=\"safety_case\"}",
+            "legendFormat": "Safety Case"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Non-Interference (MonNI) Status",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(non_interference_checks_total[5m])",
+            "legendFormat": "NI Checks/sec"
+          },
+          {
+            "expr": "rate(non_interference_passed_total[5m])",
+            "legendFormat": "NI Passed/sec"
+          },
+          {
+            "expr": "rate(non_interference_failed_total[5m])",
+            "legendFormat": "NI Failed/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 1,
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "showPoints": "never",
+              "pointSize": 5,
+              "stacking": {
+                "mode": "none",
+                "group": "A"
+              },
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 3,
+        "title": "Egress Certificates & PII Detection",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(egress_certificates_generated_total[5m])",
+            "legendFormat": "Certs/sec"
+          },
+          {
+            "expr": "rate(egress_pii_detected_total[5m])",
+            "legendFormat": "PII Detected/sec"
+          },
+          {
+            "expr": "rate(egress_secrets_detected_total[5m])",
+            "legendFormat": "Secrets/sec"
+          },
+          {
+            "expr": "rate(egress_near_dup_detected_total[5m])",
+            "legendFormat": "Near-Dup/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 1,
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "showPoints": "never",
+              "pointSize": 5,
+              "stacking": {
+                "mode": "none",
+                "group": "A"
+              },
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Access Receipts & Validation",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(access_receipts_generated_total[5m])",
+            "legendFormat": "Receipts/sec"
+          },
+          {
+            "expr": "rate(access_receipts_valid_signatures_total[5m])",
+            "legendFormat": "Valid Signatures/sec"
+          },
+          {
+            "expr": "rate(access_receipts_expired_total[5m])",
+            "legendFormat": "Expired/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 1,
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "showPoints": "never",
+              "pointSize": 5,
+              "stacking": {
+                "mode": "none",
+                "group": "A"
+              },
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 5,
+        "title": "Decision Path Phase Performance",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "decision_path_phase_duration_seconds{phase=\"observe\"}",
+            "legendFormat": "Observe"
+          },
+          {
+            "expr": "decision_path_phase_duration_seconds{phase=\"retrieve\"}",
+            "legendFormat": "Retrieve"
+          },
+          {
+            "expr": "decision_path_phase_duration_seconds{phase=\"plan\"}",
+            "legendFormat": "Plan"
+          },
+          {
+            "expr": "decision_path_phase_duration_seconds{phase=\"kernel\"}",
+            "legendFormat": "Kernel"
+          },
+          {
+            "expr": "decision_path_phase_duration_seconds{phase=\"tool_broker\"}",
+            "legendFormat": "Tool Broker"
+          },
+          {
+            "expr": "decision_path_phase_duration_seconds{phase=\"egress\"}",
+            "legendFormat": "Egress"
+          },
+          {
+            "expr": "decision_path_phase_duration_seconds{phase=\"safety_case\"}",
+            "legendFormat": "Safety Case"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 6,
+        "title": "Policy Kernel Validation Results",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "policy_kernel_validations_total{result=\"passed\"}",
+            "legendFormat": "Passed"
+          },
+          {
+            "expr": "policy_kernel_validations_total{result=\"failed\"}",
+            "legendFormat": "Failed"
+          },
+          {
+            "expr": "policy_kernel_validations_total{result=\"replan\"}",
+            "legendFormat": "Replan Required"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 7,
+        "title": "Tool Broker Execution Metrics",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "tool_broker_tools_executed_total",
+            "legendFormat": "Tools Executed"
+          },
+          {
+            "expr": "tool_broker_capability_consumption_total",
+            "legendFormat": "Capabilities Consumed"
+          },
+          {
+            "expr": "tool_broker_mediation_blocks_total",
+            "legendFormat": "Mediation Blocks"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 24
+        }
+      },
+      {
+        "id": 8,
+        "title": "Safety Case Generation Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "safety_cases_generated_total{verdict=\"passed\"}",
+            "legendFormat": "Safety Cases Passed"
+          },
+          {
+            "expr": "safety_cases_generated_total{verdict=\"failed\"}",
+            "legendFormat": "Safety Cases Failed"
+          },
+          {
+            "expr": "safety_cases_generated_total{verdict=\"inconclusive\"}",
+            "legendFormat": "Safety Cases Inconclusive"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 24
+        }
+      },
+      {
+        "id": 9,
+        "title": "End-to-End Journey Latency",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(journey_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95 Latency"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(journey_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99 Latency"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(journey_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50 Latency"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 1,
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "showPoints": "never",
+              "pointSize": 5,
+              "stacking": {
+                "mode": "none",
+                "group": "A"
+              },
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 2.0
+                  },
+                  {
+                    "color": "red",
+                    "value": 4.0
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 32
+        }
+      },
+      {
+        "id": 10,
+        "title": "Security Alerts by Severity",
+        "type": "bargraph",
+        "targets": [
+          {
+            "expr": "security_alerts_total{severity=\"critical\"}",
+            "legendFormat": "Critical"
+          },
+          {
+            "expr": "security_alerts_total{severity=\"high\"}",
+            "legendFormat": "High"
+          },
+          {
+            "expr": "security_alerts_total{severity=\"medium\"}",
+            "legendFormat": "Medium"
+          },
+          {
+            "expr": "security_alerts_total{severity=\"low\"}",
+            "legendFormat": "Low"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "bars",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 1,
+              "fillOpacity": 100,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "showPoints": "never",
+              "pointSize": 5,
+              "stacking": {
+                "mode": "none",
+                "group": "A"
+              },
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 40
+        }
+      },
+      {
+        "id": 11,
+        "title": "Tenant Isolation Metrics",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "cross_tenant_access_attempts_total",
+            "legendFormat": "Cross-Tenant Access Attempts"
+          },
+          {
+            "expr": "cross_tenant_access_blocks_total",
+            "legendFormat": "Cross-Tenant Access Blocks"
+          },
+          {
+            "expr": "tenant_isolation_violations_total",
+            "legendFormat": "Isolation Violations"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 40
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "current": {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          "datasource": "Prometheus",
+          "definition": "label_values(decision_path_phases_total, tenant)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "Tenant",
+          "multi": false,
+          "name": "tenant",
+          "options": [],
+          "query": "label_values(decision_path_phases_total, tenant)",
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 0,
+          "type": "query"
+        },
+        {
+          "current": {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          "datasource": "Prometheus",
+          "definition": "label_values(decision_path_phases_total, journey)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "Journey",
+          "multi": false,
+          "name": "journey",
+          "options": [],
+          "query": "label_values(decision_path_phases_total, journey)",
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 0,
+          "type": "query"
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 1,
+    "links": [],
+    "gnetId": null,
+    "uid": "paper-faithful-kpis"
+  }
+}

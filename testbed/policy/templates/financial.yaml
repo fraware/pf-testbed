@@ -1,0 +1,98 @@
+# Financial Restricted Policy Template
+# High-security policy for financial institutions and sensitive financial data
+
+policy:
+  id: "financial_restricted"
+  name: "Financial Restricted Policy"
+  tenant: "financial"
+  description: "High-security policy for financial data with strict controls"
+
+  # Never reveal these financial content types
+  never_reveal:
+    - "account_number"
+    - "routing_number"
+    - "balance"
+    - "transaction_id"
+    - "credit_limit"
+    - "income"
+    - "tax_id"
+    - "ssn"
+    - "credit_card"
+    - "debit_card"
+    - "pin"
+    - "cvv"
+    - "expiry_date"
+    - "bank_name"
+    - "branch_code"
+    - "swift_code"
+    - "iban"
+    - "investment_portfolio"
+    - "stock_symbols"
+    - "bond_details"
+
+  # Detection settings with higher confidence
+  pii_detection:
+    enabled: true
+    confidence_threshold: 0.98
+    categories:
+      - "financial"
+      - "personal"
+      - "government"
+      - "medical"
+      - "other"
+
+  secret_detection:
+    enabled: true
+    confidence_threshold: 0.95
+    types:
+      - "api_key"
+      - "password"
+      - "token"
+      - "private_key"
+      - "connection_string"
+      - "encryption_key"
+      - "other"
+
+  near_dup_detection:
+    enabled: true
+    similarity_threshold: 0.7 # Lower threshold for financial data
+    max_stored_hashes: 50000
+
+  # Content processing
+  redaction_mode: "hash" # Use hash for better security
+  max_content_length: 500000 # 500KB limit for financial data
+  preserve_formatting: false # Don't preserve formatting for security
+
+  # Performance settings
+  processing_timeout_ms: 10000 # Longer timeout for thorough processing
+  cache_enabled: false # No caching for financial data
+  cache_ttl_seconds: 0
+
+  # Audit settings
+  log_redactions: true
+  log_processing_times: true
+  log_policy_violations: true
+  log_access_attempts: true
+  log_user_actions: true
+
+  # Compliance
+  gdpr_compliant: true
+  hipaa_compliant: false
+  sox_compliant: true
+  pci_dss_compliant: true
+  glba_compliant: true
+
+  # Additional security measures
+  encryption_required: true
+  audit_trail_required: true
+  data_retention_days: 2555 # 7 years for SOX compliance
+  backup_encryption: true
+
+  # Risk assessment
+  risk_level: "high"
+  requires_approval: true
+  approval_threshold: "manager"
+
+  created_at: "2024-01-01T00:00:00Z"
+  updated_at: "2024-01-01T00:00:00Z"
+  version: "1.0.0"
